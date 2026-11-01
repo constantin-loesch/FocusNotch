@@ -67,6 +67,18 @@ func formatDuration(_ seconds: TimeInterval) -> String {
     return m % 60 == 0 ? "\(m / 60) h" : "\(m / 60) h \(m % 60) min"
 }
 
+// MARK: - Vorschau-Modus (Screenshots)
+
+private struct PreviewModeKey: EnvironmentKey { static let defaultValue = false }
+
+extension EnvironmentValues {
+    /// true beim Rendern außerhalb von WidgetKit: ersetzt Links/ProgressViews durch statische Ansichten.
+    var focusPreviewMode: Bool {
+        get { self[PreviewModeKey.self] }
+        set { self[PreviewModeKey.self] = newValue }
+    }
+}
+
 // MARK: - Datenaustausch App → Widget
 
 /// Zustand, den die App für das Widget als JSON ablegt.
@@ -133,6 +145,8 @@ struct WidgetSnapshot: Codable {
 enum SharedStore {
     /// ~/Library/Application Support/FocusNotch (auch aus der Widget-Sandbox der echte Home-Ordner).
     static var directory: URL {
+        // Für Screenshots/Tests umlenkbar, damit die echten Daten unberührt bleiben
+        if let dir = ProcessInfo.processInfo.environment["FOCUSNOTCH_SHARED_DIR"] { return URL(fileURLWithPath: dir) }
         let home = getpwuid(getuid()).map { String(cString: $0.pointee.pw_dir) } ?? NSHomeDirectory()
         return URL(fileURLWithPath: home).appendingPathComponent("Library/Application Support/FocusNotch", isDirectory: true)
     }

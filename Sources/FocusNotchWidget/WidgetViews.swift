@@ -4,6 +4,7 @@ import WidgetKit
 // Ansichten des Desktop-Widgets (ohne @main, damit sie sich auch offscreen rendern lassen).
 
 struct WidgetHeader: View {
+    @Environment(\.focusPreviewMode) private var previewMode
     let s: WidgetSnapshot.Resolved
     let accent: AccentColor
     var showSettings = false
@@ -16,14 +17,20 @@ struct WidgetHeader: View {
                 .foregroundStyle(.white.opacity(0.7))
             Spacer(minLength: 0)
             if showSettings {
-                Link(destination: FocusURL.make("settings")) {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.75))
-                        .frame(width: 22, height: 22)
+                if previewMode {
+                    gear
+                } else {
+                    Link(destination: FocusURL.make("settings")) { gear }
                 }
             }
         }
+    }
+
+    private var gear: some View {
+        Image(systemName: "gearshape.fill")
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(.white.opacity(0.75))
+            .frame(width: 22, height: 22)
     }
 }
 
@@ -97,11 +104,27 @@ struct WidgetCircle: View {
 }
 
 struct WidgetProgress: View {
+    @Environment(\.focusPreviewMode) private var previewMode
     let s: WidgetSnapshot.Resolved
     let date: Date
     let accent: AccentColor
 
     var body: some View {
+        if previewMode {
+            let fraction = s.isActive && s.duration > 0 ? min(1, max(0, 1 - s.remaining / s.duration)) : 0
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.white.opacity(0.15))
+                    Capsule().fill(accent.color).frame(width: geo.size.width * fraction)
+                }
+            }
+            .frame(height: 4)
+        } else {
+            liveProgress
+        }
+    }
+
+    private var liveProgress: some View {
         Group {
             if s.isRunning, let end = s.endDate, end > date, s.duration > 0 {
                 ProgressView(timerInterval: end.addingTimeInterval(-s.duration)...end, countsDown: false,

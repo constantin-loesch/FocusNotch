@@ -5,18 +5,9 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-TARGET=arm64-apple-macos14.0
-SDK_DIR=/Library/Developer/CommandLineTools/SDKs
+source tools/common.sh
 LSREGISTER=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
-mkdir -p build
-
-# SDK wählen, das zum installierten Swift-Compiler passt
-echo 'import SwiftUI' > build/sdkcheck.swift
-SDK=""
-for CANDIDATE in $(xcrun --show-sdk-path 2>/dev/null) $(ls -d "$SDK_DIR"/MacOSX[0-9]*.sdk 2>/dev/null | sort -rV); do
-  if swiftc -typecheck -sdk "$CANDIDATE" -target $TARGET build/sdkcheck.swift 2>/dev/null; then SDK="$CANDIDATE"; break; fi
-done
-[ -n "$SDK" ] || { echo "Kein passendes macOS-SDK gefunden"; exit 1; }
+pick_sdk
 echo "SDK: $SDK"
 
 FLAGS=(-O -swift-version 5 -sdk "$SDK" -target $TARGET)
@@ -33,6 +24,7 @@ WEX="$APP/Contents/PlugIns/FocusNotchWidget.appex"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$WEX/Contents/MacOS"
 cp build/FocusNotch "$APP/Contents/MacOS/FocusNotch"
+cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 cp build/FocusNotchWidget "$WEX/Contents/MacOS/FocusNotchWidget"
 python3 tools/make_intents_metadata.py build/FocusNotchWidget "$WEX/Contents/Resources/Metadata.appintents"
 
@@ -44,6 +36,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleDisplayName</key><string>FocusNotch</string>
   <key>CFBundleIdentifier</key><string>de.constantin.focusnotch</string>
   <key>CFBundleExecutable</key><string>FocusNotch</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>1.1</string>
   <key>CFBundleVersion</key><string>2</string>
