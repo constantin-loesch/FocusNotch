@@ -75,7 +75,8 @@ cat > "$WEX/Contents/Info.plist" <<PLIST
 </dict></plist>
 PLIST
 
-# Erst das Widget (mit Sandbox), dann die App signieren
+# Datei-Attribute entfernen (sonst verweigert codesign), dann erst Widget, dann App signieren
+xattr -cr "$APP"
 codesign --force --sign - --entitlements Sources/FocusNotchWidget/FocusNotchWidget.entitlements "$WEX"
 codesign --force --sign - "$APP"
 echo "Fertig: $APP"
@@ -84,9 +85,8 @@ if [ "${1:-}" = "install" ]; then
   pkill -x FocusNotch 2>/dev/null || true
   rm -rf "/Applications/$APP"
   cp -R "$APP" /Applications/
+  "$LSREGISTER" -u "$PWD/$APP" 2>/dev/null || true  # Kopie im Projektordner abmelden (sonst doppeltes Widget)
   "$LSREGISTER" -f "/Applications/$APP"
   open "/Applications/$APP"
   echo "Installiert: /Applications/$APP"
-else
-  "$LSREGISTER" -f "$APP"
 fi
