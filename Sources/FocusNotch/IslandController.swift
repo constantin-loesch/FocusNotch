@@ -66,6 +66,15 @@ final class IslandController {
         panel.orderFrontRegardless()
 
         // Nach Ende einer Phase kurz aufklappen
+        // Befehle aus dem Widget (App Intents) – die App wird dabei nicht aktiviert
+        for command in FocusCommand.all {
+            DistributedNotificationCenter.default().addObserver(
+                forName: FocusCommand.notificationName(command), object: nil, queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated { _ = self?.perform(command) }
+            }
+        }
+
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
         ) { [weak self] note in
@@ -90,22 +99,29 @@ final class IslandController {
 
     /// Steuerung über URL (vom Widget).
     func handle(url: URL) {
-        guard url.scheme == "focusnotch" else { return }
-        switch url.host {
+        guard url.scheme == "focusnotch", let command = url.host else { return }
+        if command == "settings" {
+            ui.showSettings = true
+            ui.isExpanded = true
+            pinnedUntil = Date().addingTimeInterval(8) // offen lassen, bis die Maus da ist
+            return
+        }
+        // Timer-Aktionen: nichts aufklappen und den Fokus sofort zurückgeben
+        if perform(command), NSApp.isActive, let app = previousApp, !app.isTerminated { app.activate() }
+    }
+
+    /// Führt einen Timer-Befehl aus. Gibt false zurück, wenn der Befehl unbekannt ist.
+    @discardableResult
+    func perform(_ command: String) -> Bool {
+        switch command {
         case "start": model.start()
         case "toggle": model.togglePause()
         case "pause": model.pause()
         case "skip": model.skip()
         case "stop": model.cancel()
-        case "settings":
-            ui.showSettings = true
-            ui.isExpanded = true
-            pinnedUntil = Date().addingTimeInterval(8) // offen lassen, bis die Maus da ist
-            return
-        default: return
+        default: return false
         }
-        // Timer-Aktionen: nichts aufklappen und den Fokus sofort zurückgeben
-        if NSApp.isActive, let app = previousApp, !app.isTerminated { app.activate() }
+        return true
     }
 
     private func targetScreen() -> NSScreen {

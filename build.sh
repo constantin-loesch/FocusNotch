@@ -34,6 +34,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$WEX/Contents/MacOS"
 cp build/FocusNotch "$APP/Contents/MacOS/FocusNotch"
 cp build/FocusNotchWidget "$WEX/Contents/MacOS/FocusNotchWidget"
+python3 tools/make_intents_metadata.py build/FocusNotchWidget "$WEX/Contents/Resources/Metadata.appintents"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

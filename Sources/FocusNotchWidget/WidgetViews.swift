@@ -128,10 +128,10 @@ struct SmallWidgetView: View {
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(.white.opacity(0.5))
             Spacer(minLength: 6)
-            WidgetPill(action: PrimaryAction(s), accent: accent)
+            Button(intent: ToggleTimerIntent()) { WidgetPill(action: PrimaryAction(s), accent: accent) }
+                .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .widgetURL(PrimaryAction(s).url) // kleines Widget: ganzer Bereich ist der Button
     }
 }
 
@@ -151,10 +151,10 @@ struct MediumWidgetView: View {
                     .padding(.top, 2)
                 Spacer(minLength: 8)
                 HStack(spacing: 6) {
-                    Link(destination: PrimaryAction(s).url) { WidgetPill(action: PrimaryAction(s), accent: accent) }
+                    Button(intent: ToggleTimerIntent()) { WidgetPill(action: PrimaryAction(s), accent: accent) }
                     if s.isActive {
-                        Link(destination: FocusURL.make("skip")) { WidgetCircle(symbol: "forward.fill") }
-                        Link(destination: FocusURL.make("stop")) { WidgetCircle(symbol: "stop.fill") }
+                        Button(intent: SkipTimerIntent()) { WidgetCircle(symbol: "forward.fill") }
+                        Button(intent: StopTimerIntent()) { WidgetCircle(symbol: "stop.fill") }
                     }
                 }
             }

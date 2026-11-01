@@ -41,6 +41,14 @@ enum AccentColor: String, Codable, CaseIterable, Identifiable {
     var onAccent: Color { self == .yellow ? .black : .white }
 }
 
+/// Befehle vom Widget an die App per System-Benachrichtigung (ohne die App zu öffnen).
+enum FocusCommand {
+    static let all = ["start", "toggle", "skip", "stop"]
+    static func notificationName(_ command: String) -> Notification.Name {
+        Notification.Name("de.constantin.focusnotch.command.\(command)")
+    }
+}
+
 /// URLs, mit denen das Widget die App steuert (focusnotch://start usw.).
 enum FocusURL {
     static func make(_ action: String) -> URL { URL(string: "focusnotch://\(action)")! }
