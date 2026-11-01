@@ -25,6 +25,7 @@ swiftc "${FLAGS[@]}" -module-name FocusNotch -o build/FocusNotch \
   Sources/Shared/*.swift Sources/FocusNotch/*.swift
 echo "Baue Widget…"
 swiftc "${FLAGS[@]}" -parse-as-library -application-extension -module-name FocusNotchWidget -o build/FocusNotchWidget \
+  -Xlinker -e -Xlinker _NSExtensionMain \
   Sources/Shared/*.swift Sources/FocusNotchWidget/*.swift
 
 APP="FocusNotch.app"
