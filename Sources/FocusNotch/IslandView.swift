@@ -132,7 +132,7 @@ struct ExpandedView: View {
             HStack {
                 HStack(spacing: 6) {
                     Circle().fill(Color(nsColor: model.phaseColor)).frame(width: 7, height: 7)
-                    Text(ui.showSettings ? "Einstellungen" : "Pomodoro · \(model.phase.title)")
+                    Text(ui.showSettings ? "Einstellungen" : "FocusNotch · \(model.phase.title)")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.75))
                 }

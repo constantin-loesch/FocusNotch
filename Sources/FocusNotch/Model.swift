@@ -217,9 +217,21 @@ final class PomodoroModel: ObservableObject {
         }
     }
 
+    /// Übernimmt Einstellungen und Record aus der alten App „Pomodoro Island“ (einmalig).
+    private func migrateFromPomodoroIsland() {
+        guard !defaults.bool(forKey: "migratedFromPomodoroIsland") else { return }
+        defaults.set(true, forKey: "migratedFromPomodoroIsland")
+        guard defaults.data(forKey: "sessions") == nil,
+              let old = UserDefaults(suiteName: "de.constantin.pomodoroisland") else { return }
+        for key in ["settings", "sessions", "cancelled", "cycle", "run"] {
+            if let value = old.object(forKey: key) { defaults.set(value, forKey: key) }
+        }
+    }
+
     private func load() {
         isLoading = true
         defer { isLoading = false }
+        migrateFromPomodoroIsland()
         let dec = JSONDecoder()
         if let d = defaults.data(forKey: "settings"), let s = try? dec.decode(PomodoroSettings.self, from: d) { settings = s }
         if let d = defaults.data(forKey: "sessions"), let s = try? dec.decode([Session].self, from: d) { sessions = s }

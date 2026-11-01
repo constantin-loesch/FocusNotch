@@ -2,9 +2,9 @@
 import PackageDescription
 
 let package = Package(
-    name: "PomodoroIsland",
+    name: "FocusNotch",
     platforms: [.macOS(.v14)],
     targets: [
-        .executableTarget(name: "PomodoroIsland", path: "Sources/PomodoroIsland")
+        .executableTarget(name: "FocusNotch", path: "Sources/FocusNotch")
     ]
 )

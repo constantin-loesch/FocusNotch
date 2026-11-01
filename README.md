@@ -1,4 +1,4 @@
-# Pomodoro Island
+# FocusNotch
 
 Dynamic Island mit Pomodoro-Timer für die MacBook-Notch.
 
@@ -10,6 +10,6 @@ Dynamic Island mit Pomodoro-Timer für die MacBook-Notch.
 ## Bauen
 
     ./build.sh
-    open "Pomodoro Island.app"
+    open "FocusNotch.app"
 
 Optional nach /Applications kopieren (empfohlen für „Beim Login starten“).
