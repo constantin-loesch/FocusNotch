@@ -350,7 +350,7 @@ struct ColorPickerRow: View {
     @Binding var selection: AccentColor
 
     var body: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.fixed(18), spacing: 7), count: 4), alignment: .leading, spacing: 7) {
+        LazyVGrid(columns: Array(repeating: GridItem(.fixed(18), spacing: 7), count: 5), alignment: .leading, spacing: 7) {
             ForEach(AccentColor.allCases) { c in
                 Button { selection = c } label: {
                     Circle()

@@ -73,8 +73,9 @@ struct WidgetPill: View {
         let fullColor = renderingMode == .fullColor
         HStack(spacing: 4) {
             Image(systemName: action.symbol).font(.system(size: 10, weight: .heavy))
-            Text(action.title).font(.system(size: 12, weight: .bold))
+            Text(action.title).font(.system(size: 12, weight: .bold)).lineLimit(1)
         }
+        .fixedSize()
         // Abgedunkelter Modus: macOS macht dunkle Farben dort durchsichtig.
         // Deshalb weiße Schrift auf einem nur leicht hellen Button, ohne Rand.
         .foregroundStyle(fullColor ? accent.onAccent : .white)
@@ -152,9 +153,12 @@ struct MediumWidgetView: View {
                 Spacer(minLength: 8)
                 HStack(spacing: 6) {
                     Button(intent: ToggleTimerIntent()) { WidgetPill(action: PrimaryAction(s), accent: accent) }
+                        .buttonStyle(.plain)
                     if s.isActive {
                         Button(intent: SkipTimerIntent()) { WidgetCircle(symbol: "forward.fill") }
+                            .buttonStyle(.plain)
                         Button(intent: StopTimerIntent()) { WidgetCircle(symbol: "stop.fill") }
+                            .buttonStyle(.plain)
                     }
                 }
             }

@@ -20,7 +20,7 @@ enum Phase: String, Codable {
 
 /// Die eine Akzentfarbe der App (in den Einstellungen wählbar).
 enum AccentColor: String, Codable, CaseIterable, Identifiable {
-    case orange, red, pink, purple, blue, teal, green, yellow
+    case orange, red, pink, purple, blue, teal, green, yellow, gray
 
     var id: String { rawValue }
 
@@ -34,11 +34,12 @@ enum AccentColor: String, Codable, CaseIterable, Identifiable {
         case .teal:   return Color(red: 0.19, green: 0.78, blue: 0.85)
         case .green:  return Color(red: 0.20, green: 0.84, blue: 0.29)
         case .yellow: return Color(red: 1.00, green: 0.80, blue: 0.00)
+        case .gray:   return Color(red: 0.56, green: 0.56, blue: 0.60)
         }
     }
 
     /// Text-/Symbolfarbe auf der Akzentfarbe.
-    var onAccent: Color { self == .yellow ? .black : .white }
+    var onAccent: Color { self == .yellow || self == .gray ? .black : .white }
 }
 
 /// Befehle vom Widget an die App per System-Benachrichtigung (ohne die App zu öffnen).
