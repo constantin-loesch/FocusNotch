@@ -9,6 +9,8 @@ source tools/common.sh
 LSREGISTER=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 pick_sdk
 echo "SDK: $SDK"
+VERSION=$(cat VERSION)
+BUILD_NUMBER=$(git rev-list --count HEAD 2>/dev/null || echo 1)
 
 FLAGS=(-O -swift-version 5 -sdk "$SDK" -target $TARGET)
 echo "Baue App…"
@@ -38,8 +40,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleExecutable</key><string>FocusNotch</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>1.1</string>
-  <key>CFBundleVersion</key><string>2</string>
+  <key>CFBundleShortVersionString</key><string>$VERSION</string>
+  <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><true/>
   <key>NSHighResolutionCapable</key><true/>
@@ -60,8 +62,8 @@ cat > "$WEX/Contents/Info.plist" <<PLIST
   <key>CFBundleIdentifier</key><string>de.constantin.focusnotch.widget</string>
   <key>CFBundleExecutable</key><string>FocusNotchWidget</string>
   <key>CFBundlePackageType</key><string>XPC!</string>
-  <key>CFBundleShortVersionString</key><string>1.1</string>
-  <key>CFBundleVersion</key><string>2</string>
+  <key>CFBundleShortVersionString</key><string>$VERSION</string>
+  <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
   <key>CFBundleSupportedPlatforms</key><array><string>MacOSX</string></array>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>NSExtension</key><dict>

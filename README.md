@@ -20,6 +20,14 @@
   <img src="docs/images/hero.png" alt="FocusNotch: aufgeklappte Island und Desktop-Widgets">
 </p>
 
+<h3 align="center">Installieren – eine Zeile im Terminal</h3>
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/constantin-loesch/FocusNotch/main/install.sh | bash
+```
+
+<p align="center"><sub>macOS 14+ · Apple Silicon · lädt die neueste Version, installiert sie nach /Applications und startet sie</sub></p>
+
 ---
 
 ## Inhalt
@@ -104,7 +112,25 @@ Zwei Größen für den Schreibtisch. Die Buttons sind **echte Widget-Buttons** (
 
 ## Installation
 
-### Voraussetzungen
+### Schnell: fertige App laden
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/constantin-loesch/FocusNotch/main/install.sh | bash
+```
+
+Das Skript ([install.sh](install.sh)) prüft macOS-Version und Prozessor, lädt `FocusNotch.zip` aus dem [neuesten Release](https://github.com/constantin-loesch/FocusNotch/releases/latest), installiert die App nach `/Applications` (ohne Admin-Rechte nach `~/Applications`), meldet das Widget an und startet FocusNotch. Ein erneuter Aufruf aktualisiert auf die neueste Version.
+
+Deinstallieren:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/constantin-loesch/FocusNotch/main/install.sh | bash -s -- --uninstall
+```
+
+> **Warum Terminal statt Download-Button?** FocusNotch ist nicht von Apple notarisiert (dafür braucht es einen kostenpflichtigen Developer-Account). Eine im Browser heruntergeladene App würde macOS beim ersten Start blockieren. Per Terminal geladene Dateien werden nicht als „aus dem Internet“ markiert, deshalb startet die App ohne Rückfrage.
+
+### Selbst bauen
+
+#### Voraussetzungen
 
 - macOS 14 (Sonoma) oder neuer, Apple Silicon
 - **Xcode Command Line Tools** – das volle Xcode ist nicht nötig:
@@ -113,7 +139,7 @@ Zwei Größen für den Schreibtisch. Die Buttons sind **echte Widget-Buttons** (
 xcode-select --install
 ```
 
-### Bauen und installieren
+#### Bauen und installieren
 
 ```bash
 git clone https://github.com/constantin-loesch/FocusNotch.git
@@ -242,9 +268,12 @@ FocusNotch/
 │   ├── make_icon.sh                # Rendert das Logo → AppIcon.icns + logo.png
 │   ├── Icon/                       # Logo als SwiftUI-Ansicht
 │   ├── screenshots.sh              # Rendert die Bilder dieser README
-│   └── Screenshots/                # Demo-Daten und Bildkompositionen
+│   ├── Screenshots/                # Demo-Daten und Bildkompositionen
+│   └── release.sh                  # Baut, zippt und veröffentlicht ein GitHub-Release
 ├── docs/images/                    # Logo und Screenshots
 ├── build.sh                        # Bauen, signieren, installieren
+├── install.sh                      # Ein-Zeilen-Installer (lädt das neueste Release)
+├── VERSION                         # Versionsnummer für App und Release
 ├── LICENSE
 └── README.md
 ```
@@ -263,6 +292,12 @@ FocusNotch wird ohne Xcode gebaut – `build.sh` erledigt alles mit `swiftc` und
 6. **Signieren** – Ad-hoc, erst das Widget mit Sandbox-Berechtigungen, dann die App.
 7. **Installieren** (`install`) – nach `/Applications` kopieren, bei LaunchServices anmelden (die Kopie im Projektordner wird abgemeldet, damit das Widget nicht doppelt erscheint) und starten.
 
+### Neue Version veröffentlichen
+
+1. Versionsnummer in `VERSION` erhöhen und committen.
+2. `./tools/release.sh` ausführen – baut die App, packt `FocusNotch.zip` und erstellt das Release `v<VERSION>` auf GitHub (GitHub-CLI muss angemeldet sein: `gh auth login`).
+3. Der Installer holt ab sofort automatisch diese Version.
+
 ---
 
 ## Werkzeuge
@@ -273,6 +308,8 @@ FocusNotch wird ohne Xcode gebaut – `build.sh` erledigt alles mit `swiftc` und
 | `./build.sh install` | Bauen, nach `/Applications` installieren, starten |
 | `./tools/make_icon.sh` | Logo neu rendern → `Resources/AppIcon.icns`, `docs/images/logo.png` |
 | `./tools/screenshots.sh` | README-Bilder neu rendern → `docs/images/` |
+| `./tools/release.sh` | Bauen, `FocusNotch.zip` packen und als GitHub-Release `v<VERSION>` veröffentlichen |
+| `install.sh` | Installer für Nutzer (lädt das neueste Release) |
 
 Die Screenshots entstehen aus den **echten SwiftUI-Ansichten** der App und des Widgets mit Demo-Daten. Die Widget-Daten werden dabei über `FOCUSNOTCH_SHARED_DIR` in einen temporären Ordner umgeleitet, deine echten Daten bleiben unberührt.
 
