@@ -141,45 +141,50 @@ enum SharedStore {
     }
 }
 
-// MARK: - Kästchen-Graph (Sessions pro Tag)
+// MARK: - Kästchen-Graph (Sessions der letzten 14 Tage)
 
-/// Spalten = Wochen (Mo oben), Kästchen = Tage. Die Farbstufen passen sich dem besten Tag im Zeitraum an.
-struct HeatmapGrid: View {
-    var days: [Int]            // ältester zuerst, letzter = heute
-    var weeks: Int
+/// Rollende 14 Tage: ein Kästchen pro Tag, ältester links oben, heute rechts unten.
+/// Die Farbstufen passen sich dem besten Tag im Zeitraum an; die Zahl steht im Kästchen.
+struct RollingSessionsGrid: View {
+    static let dayCount = 14
+
+    var days: [Int]            // ältester zuerst, letzter = heute (es zählen nur die letzten 14)
     var cell: CGFloat
     var gap: CGFloat
     var color: Color
-    var today: Date = Date()
+    var numberColor: Color = .white
+    var intensityScale: Double = 1 // < 1 im abgedunkelten Widget-Modus, damit die Zahlen lesbar bleiben
 
     var body: some View {
-        let maxCount = max(days.max() ?? 0, 1)
-        let todayRow = (Calendar.current.component(.weekday, from: today) + 5) % 7 // Montag = 0
-        HStack(spacing: gap) {
-            ForEach(0..<weeks, id: \.self) { col in
-                VStack(spacing: gap) {
-                    ForEach(0..<7, id: \.self) { row in
-                        cellView(daysAgo: (weeks - 1 - col) * 7 + (todayRow - row), maxCount: maxCount)
+        let last = Array(days.suffix(Self.dayCount))
+        let padded = Array(repeating: 0, count: max(0, Self.dayCount - last.count)) + last
+        let maxCount = max(padded.max() ?? 0, 1)
+        VStack(spacing: gap) {
+            ForEach(0..<2, id: \.self) { row in
+                HStack(spacing: gap) {
+                    ForEach(0..<7, id: \.self) { col in
+                        let i = row * 7 + col
+                        cellView(count: padded[i], isToday: i == Self.dayCount - 1, maxCount: maxCount)
                     }
                 }
             }
         }
     }
 
-    @ViewBuilder
-    private func cellView(daysAgo: Int, maxCount: Int) -> some View {
-        let shape = RoundedRectangle(cornerRadius: cell * 0.25, style: .continuous)
-        if daysAgo < 0 {
-            Color.clear.frame(width: cell, height: cell) // Zukunft
-        } else {
-            let index = days.count - 1 - daysAgo
-            let count = index >= 0 ? days[index] : 0
-            shape
-                .fill(count == 0 ? Color.white.opacity(0.09) : color.opacity(Self.opacity(count, maxCount)))
-                .frame(width: cell, height: cell)
-                .overlay(daysAgo == 0 ? shape.stroke(Color.white.opacity(0.7), lineWidth: 1) : nil)
-                .help("\(count) Sessions")
-        }
+    private func cellView(count: Int, isToday: Bool, maxCount: Int) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cell * 0.28, style: .continuous)
+        return shape
+            .fill(count == 0 ? Color.white.opacity(0.09) : color.opacity(Self.opacity(count, maxCount) * intensityScale))
+            .frame(width: cell, height: cell)
+            .overlay {
+                if count > 0 {
+                    Text("\(count)")
+                        .font(.system(size: cell * 0.48, weight: .bold, design: .rounded))
+                        .foregroundStyle(numberColor)
+                        .minimumScaleFactor(0.5)
+                }
+            }
+            .overlay(isToday ? shape.stroke(Color.white.opacity(0.7), lineWidth: 1) : nil)
     }
 
     private static func opacity(_ count: Int, _ maxCount: Int) -> Double {

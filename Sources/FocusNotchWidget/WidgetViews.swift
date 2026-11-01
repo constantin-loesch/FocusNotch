@@ -6,6 +6,7 @@ import WidgetKit
 struct WidgetHeader: View {
     let s: WidgetSnapshot.Resolved
     let accent: AccentColor
+    var showSettings = false
 
     var body: some View {
         HStack(spacing: 5) {
@@ -14,6 +15,14 @@ struct WidgetHeader: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.7))
             Spacer(minLength: 0)
+            if showSettings {
+                Link(destination: FocusURL.make("settings")) {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.75))
+                        .frame(width: 22, height: 22)
+                }
+            }
         }
     }
 }
@@ -56,18 +65,23 @@ struct PrimaryAction {
 }
 
 struct WidgetPill: View {
+    @Environment(\.widgetRenderingMode) private var renderingMode
     let action: PrimaryAction
     let accent: AccentColor
 
     var body: some View {
+        let fullColor = renderingMode == .fullColor
         HStack(spacing: 4) {
-            Image(systemName: action.symbol).font(.system(size: 9, weight: .bold))
-            Text(action.title).font(.system(size: 11, weight: .semibold))
+            Image(systemName: action.symbol).font(.system(size: 10, weight: .heavy))
+            Text(action.title).font(.system(size: 12, weight: .bold))
         }
-        .foregroundStyle(accent.onAccent)
-        .padding(.horizontal, 12)
-        .frame(height: 24)
-        .background(Capsule().fill(accent.color))
+        .foregroundStyle(fullColor ? accent.onAccent : .white)
+        .padding(.horizontal, 13)
+        .frame(height: 26)
+        .background(
+            Capsule().fill(fullColor ? accent.color : Color.white.opacity(0.22))
+        )
+        .overlay(fullColor ? nil : Capsule().stroke(Color.white.opacity(0.85), lineWidth: 1.2))
     }
 }
 
@@ -123,6 +137,7 @@ struct SmallWidgetView: View {
 }
 
 struct MediumWidgetView: View {
+    @Environment(\.widgetRenderingMode) private var renderingMode
     let s: WidgetSnapshot.Resolved
     let date: Date
     let accent: AccentColor
@@ -130,7 +145,7 @@ struct MediumWidgetView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
             VStack(alignment: .leading, spacing: 0) {
-                WidgetHeader(s: s, accent: accent)
+                WidgetHeader(s: s, accent: accent, showSettings: true)
                 Spacer(minLength: 4)
                 WidgetTimeText(s: s, date: date, size: 36)
                 WidgetProgress(s: s, date: date, accent: accent)
@@ -155,7 +170,17 @@ struct MediumWidgetView: View {
                     WidgetStat(title: "Pause", value: formatDuration(s.todayBreak), color: .white)
                 }
                 Spacer(minLength: 0)
-                HeatmapGrid(days: s.days, weeks: 10, cell: 8, gap: 2.5, color: accent.color, today: date)
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Text("SESSIONS · 14 TAGE")
+                        .font(.system(size: 8, weight: .bold)).tracking(1)
+                        .foregroundStyle(.white.opacity(0.4))
+                    Text("\(s.days.suffix(RollingSessionsGrid.dayCount).reduce(0, +))")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                }
+                RollingSessionsGrid(days: s.days, cell: 14, gap: 3, color: accent.color,
+                                    numberColor: renderingMode == .fullColor ? accent.onAccent : .white,
+                                    intensityScale: renderingMode == .fullColor ? 1 : 0.45)
             }
             .frame(maxHeight: .infinity, alignment: .topLeading)
         }

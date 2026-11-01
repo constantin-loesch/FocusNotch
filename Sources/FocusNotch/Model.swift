@@ -292,7 +292,7 @@ final class PomodoroModel: ObservableObject {
             phase: phase, endDate: endDate, pausedRemaining: pausedRemaining, duration: phaseDuration,
             focusMinutes: settings.focusMinutes,
             todayFocus: logged(.focus, on: today), todayBreak: logged(.rest, on: today),
-            days: dailyCounts(days: 91), accent: settings.accent, updated: today))
+            days: dailyCounts(days: RollingSessionsGrid.dayCount), accent: settings.accent, updated: today))
         WidgetCenter.shared.reloadAllTimelines()
     }
 

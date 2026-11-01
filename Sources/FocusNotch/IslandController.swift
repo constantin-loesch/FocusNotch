@@ -86,6 +86,11 @@ final class IslandController {
         case "pause": model.pause()
         case "skip": model.skip()
         case "stop": model.cancel()
+        case "settings":
+            ui.showSettings = true
+            ui.isExpanded = true
+            pinnedUntil = Date().addingTimeInterval(8) // offen lassen, bis die Maus da ist
+            return
         default: return
         }
         pinnedUntil = Date().addingTimeInterval(2.5) // kurz aufklappen als Rückmeldung

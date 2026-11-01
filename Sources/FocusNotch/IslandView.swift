@@ -259,25 +259,22 @@ struct TimerControl: View {
 
 struct TodayView: View {
     @EnvironmentObject var model: PomodoroModel
-    static let weeks = 13
 
     var body: some View {
-        let days = model.dailyCounts(days: Self.weeks * 7)
+        let days = model.dailyCounts(days: RollingSessionsGrid.dayCount)
         VStack(alignment: .leading, spacing: 8) {
             SectionLabel("Heute")
             HStack(spacing: 18) {
                 StatBlock(title: "Fokus", value: formatDuration(model.todayFocus), color: model.accent)
                 StatBlock(title: "Pause", value: formatDuration(model.todayBreak), color: .white)
             }
-            HStack {
-                SectionLabel("Sessions")
-                Spacer(minLength: 4)
-                Text("\(days.reduce(0, +)) in \(Self.weeks) Wochen")
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.4))
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                SectionLabel("Sessions · 14 Tage")
+                Text("\(days.reduce(0, +))")
+                    .font(.system(size: 13, weight: .bold, design: .rounded).monospacedDigit())
+                    .foregroundStyle(.white)
             }
-            .frame(width: CGFloat(Self.weeks) * 12 - 3)
-            HeatmapGrid(days: days, weeks: Self.weeks, cell: 9, gap: 3, color: model.accent, today: model.now)
+            RollingSessionsGrid(days: days, cell: 19, gap: 4, color: model.accent, numberColor: model.onAccent)
         }
     }
 }
