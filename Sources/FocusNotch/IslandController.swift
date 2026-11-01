@@ -32,22 +32,20 @@ final class IslandUIState: ObservableObject {
     @Published var notchSize = CGSize(width: 190, height: 32)
     @Published var hasNotch = true
 
-    static let sideWidth: CGFloat = 78
+    /// Breite links und rechts neben der Notch im eingeklappten Zustand.
+    static let sideWidth: CGFloat = 136
 
-    func size(active: Bool) -> CGSize {
+    func size() -> CGSize {
         if isExpanded {
-            return CGSize(width: max(580, notchSize.width + 320), height: notchSize.height + 196)
+            return CGSize(width: max(660, notchSize.width + 2 * Self.sideWidth + 80), height: notchSize.height + 200)
         }
-        if active {
-            return CGSize(width: notchSize.width + 2 * Self.sideWidth, height: notchSize.height)
-        }
-        return notchSize
+        return CGSize(width: notchSize.width + 2 * Self.sideWidth, height: notchSize.height)
     }
 }
 
 @MainActor
 final class IslandController {
-    static let windowSize = CGSize(width: 720, height: 320)
+    static let windowSize = CGSize(width: 760, height: 320)
 
     private let panel = IslandPanel()
     private let model = PomodoroModel()
@@ -79,6 +77,20 @@ final class IslandController {
         mouseTimer = t
     }
 
+    /// Steuerung über URL (vom Widget).
+    func handle(url: URL) {
+        guard url.scheme == "focusnotch" else { return }
+        switch url.host {
+        case "start": model.start()
+        case "toggle": model.togglePause()
+        case "pause": model.pause()
+        case "skip": model.skip()
+        case "stop": model.cancel()
+        default: return
+        }
+        pinnedUntil = Date().addingTimeInterval(2.5) // kurz aufklappen als Rückmeldung
+    }
+
     private func targetScreen() -> NSScreen {
         NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? NSScreen.main ?? NSScreen.screens[0]
     }
@@ -101,7 +113,7 @@ final class IslandController {
     private func trackMouse() {
         let p = NSEvent.mouseLocation
         let f = panel.frame
-        let size = ui.size(active: model.isActive)
+        let size = ui.size()
         let pad: CGFloat = ui.isExpanded ? 14 : 2
         let hot = NSRect(x: f.midX - size.width / 2 - pad, y: f.maxY - size.height - pad,
                          width: size.width + 2 * pad, height: size.height + pad + 4)

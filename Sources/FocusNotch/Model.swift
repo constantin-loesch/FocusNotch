@@ -1,40 +1,78 @@
 import AppKit
-import Combine
-
-enum Phase: String, Codable {
-    case idle, focus, shortBreak, longBreak
-
-    var title: String {
-        switch self {
-        case .idle: return "Bereit"
-        case .focus: return "Fokus"
-        case .shortBreak: return "Kurze Pause"
-        case .longBreak: return "Lange Pause"
-        }
-    }
-
-    var isBreak: Bool { self == .shortBreak || self == .longBreak }
-}
+import SwiftUI
+import WidgetKit
 
 struct PomodoroSettings: Codable, Equatable {
     var focusMinutes = 25
     var shortBreakMinutes = 5
     var longBreakMinutes = 15
     var longBreakEvery = 4
-    var dailyGoal = 8
     var autoStartBreak = true
     var sound = true
+    var accent: AccentColor = .orange
+
+    init() {}
+
+    // Fehlende/alte Felder einzeln mit Standardwerten auffüllen
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = PomodoroSettings()
+        focusMinutes = (try? c.decodeIfPresent(Int.self, forKey: .focusMinutes)) ?? d.focusMinutes
+        shortBreakMinutes = (try? c.decodeIfPresent(Int.self, forKey: .shortBreakMinutes)) ?? d.shortBreakMinutes
+        longBreakMinutes = (try? c.decodeIfPresent(Int.self, forKey: .longBreakMinutes)) ?? d.longBreakMinutes
+        longBreakEvery = (try? c.decodeIfPresent(Int.self, forKey: .longBreakEvery)) ?? d.longBreakEvery
+        autoStartBreak = (try? c.decodeIfPresent(Bool.self, forKey: .autoStartBreak)) ?? d.autoStartBreak
+        sound = (try? c.decodeIfPresent(Bool.self, forKey: .sound)) ?? d.sound
+        accent = (try? c.decodeIfPresent(AccentColor.self, forKey: .accent)) ?? d.accent
+    }
 }
 
+/// Ein Eintrag im Verlauf: eine Fokus- oder Pausenphase (ganz oder teilweise).
 struct Session: Codable, Identifiable {
+    enum Kind: String, Codable { case focus, rest }
+
     var id = UUID()
     var end: Date
-    var minutes: Int
+    var seconds: TimeInterval
+    var kind: Kind = .focus
+    var completed = true
+
+    init(end: Date, seconds: TimeInterval, kind: Kind, completed: Bool) {
+        self.end = end
+        self.seconds = seconds
+        self.kind = kind
+        self.completed = completed
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, end, seconds, kind, completed, minutes }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        end = try c.decode(Date.self, forKey: .end)
+        if let s = try c.decodeIfPresent(TimeInterval.self, forKey: .seconds) {
+            seconds = s
+        } else { // altes Format: nur Minuten
+            seconds = TimeInterval(try c.decodeIfPresent(Int.self, forKey: .minutes) ?? 0) * 60
+        }
+        kind = try c.decodeIfPresent(Kind.self, forKey: .kind) ?? .focus
+        completed = try c.decodeIfPresent(Bool.self, forKey: .completed) ?? true
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(end, forKey: .end)
+        try c.encode(seconds, forKey: .seconds)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(completed, forKey: .completed)
+    }
 }
 
 private struct RunState: Codable {
     var phase: Phase
-    var endDate: Date
+    var endDate: Date?
+    var pausedRemaining: TimeInterval?
     var duration: TimeInterval
     var cycleCount: Int
 }
@@ -42,14 +80,15 @@ private struct RunState: Codable {
 @MainActor
 final class PomodoroModel: ObservableObject {
     @Published private(set) var phase: Phase = .idle
-    @Published private(set) var endDate: Date?
+    @Published private(set) var endDate: Date?                 // gesetzt, solange der Timer läuft
+    @Published private(set) var pausedRemaining: TimeInterval? // gesetzt, solange er pausiert ist
     @Published private(set) var phaseDuration: TimeInterval = 0
     @Published private(set) var now = Date()
     @Published private(set) var sessions: [Session] = []
     @Published private(set) var cancelledCount = 0
     @Published var settings = PomodoroSettings() { didSet { save() } }
 
-    /// Wird aufgerufen, wenn eine Phase von selbst endet (Fokus oder Pause).
+    /// Wird aufgerufen, wenn eine Phase von selbst endet.
     var onPhaseFinished: (() -> Void)?
 
     private var cycleCount = 0 // abgeschlossene Pomodoros seit der letzten langen Pause
@@ -64,86 +103,131 @@ final class PomodoroModel: ObservableObject {
         }
         RunLoop.main.add(t, forMode: .common)
         ticker = t
+        save() // Widget sofort mit aktuellem Stand versorgen
     }
 
     // MARK: Zustand
 
     var isActive: Bool { phase != .idle }
+    var isPaused: Bool { isActive && pausedRemaining != nil }
+    var isRunning: Bool { isActive && pausedRemaining == nil }
+    var accent: Color { settings.accent.color }
+    var onAccent: Color { settings.accent.onAccent }
 
     var remaining: TimeInterval {
-        guard let endDate else { return TimeInterval(settings.focusMinutes * 60) }
-        return max(0, endDate.timeIntervalSince(now))
+        if let pausedRemaining { return pausedRemaining }
+        if let endDate { return max(0, endDate.timeIntervalSince(now)) }
+        return TimeInterval(settings.focusMinutes * 60)
     }
+
+    var elapsed: TimeInterval { isActive ? max(0, phaseDuration - remaining) : 0 }
 
     var progress: Double {
-        guard phaseDuration > 0, isActive else { return 0 }
-        return min(1, max(0, 1 - remaining / phaseDuration))
+        guard isActive, phaseDuration > 0 else { return 0 }
+        return min(1, max(0, elapsed / phaseDuration))
     }
 
-    var remainingString: String {
-        let total = Int(remaining.rounded(.up))
-        let h = total / 3600, m = (total % 3600) / 60, s = total % 60
-        return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%02d:%02d", m, s)
-    }
-
-    var phaseColor: NSColor {
-        switch phase {
-        case .idle: return .systemGray
-        case .focus: return .systemOrange
-        case .shortBreak, .longBreak: return .systemGreen
-        }
-    }
+    var remainingString: String { formatClock(remaining) }
+    var phaseLabel: String { isPaused ? "Pausiert" : phase.title }
 
     // MARK: Aktionen
 
-    func startFocus() {
-        begin(.focus, minutes: settings.focusMinutes)
+    /// Startet einen Fokus-Timer bzw. setzt einen pausierten fort.
+    func start() {
+        if !isActive { begin(.focus, minutes: settings.focusMinutes) } else if isPaused { resume() }
     }
 
+    func togglePause() {
+        if !isActive { start() } else if isPaused { resume() } else { pause() }
+    }
+
+    func pause() {
+        guard isRunning else { return }
+        now = Date()
+        pausedRemaining = remaining
+        endDate = nil
+        save()
+    }
+
+    func resume() {
+        guard isActive, let r = pausedRemaining else { return }
+        now = Date()
+        endDate = now.addingTimeInterval(r)
+        pausedRemaining = nil
+        save()
+    }
+
+    /// Fokus → direkt in die Pause. Pause → beenden.
+    func skip() {
+        guard isActive else { return }
+        now = Date()
+        if phase == .focus {
+            log(.focus, seconds: elapsed, completed: false)
+            startBreak()
+        } else {
+            log(.rest, seconds: elapsed, completed: false)
+            stop()
+        }
+    }
+
+    /// Timer komplett stoppen.
     func cancel() {
-        if phase == .focus { cancelledCount += 1 }
+        guard isActive else { return }
+        now = Date()
+        if phase == .focus {
+            cancelledCount += 1
+            log(.focus, seconds: elapsed, completed: false)
+        } else {
+            log(.rest, seconds: elapsed, completed: false)
+        }
         stop()
     }
-
-    func skipBreak() { stop() }
 
     private func begin(_ p: Phase, minutes: Int) {
         phase = p
         phaseDuration = TimeInterval(minutes * 60)
         now = Date()
         endDate = now.addingTimeInterval(phaseDuration)
+        pausedRemaining = nil
         save()
+    }
+
+    private func startBreak() {
+        if cycleCount >= settings.longBreakEvery {
+            cycleCount = 0
+            begin(.longBreak, minutes: settings.longBreakMinutes)
+        } else {
+            begin(.shortBreak, minutes: settings.shortBreakMinutes)
+        }
     }
 
     private func stop() {
         phase = .idle
         endDate = nil
+        pausedRemaining = nil
         phaseDuration = 0
         save()
     }
 
+    private func log(_ kind: Session.Kind, seconds: TimeInterval, completed: Bool) {
+        guard seconds >= 1 else { return }
+        sessions.append(Session(end: Date(), seconds: seconds, kind: kind, completed: completed))
+    }
+
     private func tick() {
         now = Date()
-        guard isActive, let endDate, now >= endDate else { return }
+        guard isRunning, let endDate, now >= endDate else { return }
         finishPhase()
     }
 
     private func finishPhase() {
         if phase == .focus {
-            sessions.append(Session(end: Date(), minutes: Int(phaseDuration / 60)))
+            log(.focus, seconds: phaseDuration, completed: true)
             cycleCount += 1
             playSound("Glass")
-            if settings.autoStartBreak {
-                if cycleCount >= settings.longBreakEvery {
-                    cycleCount = 0
-                    begin(.longBreak, minutes: settings.longBreakMinutes)
-                } else {
-                    begin(.shortBreak, minutes: settings.shortBreakMinutes)
-                }
-            } else {
-                stop()
-            }
+            if settings.autoStartBreak { startBreak() } else { stop() }
         } else {
+            log(.rest, seconds: phaseDuration, completed: true)
             playSound("Hero")
             stop()
         }
@@ -162,42 +246,28 @@ final class PomodoroModel: ObservableObject {
         save()
     }
 
-    // MARK: Record / Statistik
+    // MARK: Statistik
 
     private var cal: Calendar { Calendar.current }
 
-    func count(on day: Date) -> Int {
-        sessions.filter { cal.isDate($0.end, inSameDayAs: day) }.count
+    private func logged(_ kind: Session.Kind, on day: Date) -> TimeInterval {
+        sessions.filter { $0.kind == kind && cal.isDate($0.end, inSameDayAs: day) }.reduce(0) { $0 + $1.seconds }
     }
 
-    var todayCount: Int { count(on: now) }
-    var todayMinutes: Int { sessions.filter { cal.isDateInToday($0.end) }.reduce(0) { $0 + $1.minutes } }
-    var totalCount: Int { sessions.count }
-    var totalMinutes: Int { sessions.reduce(0) { $0 + $1.minutes } }
+    /// Heute fokussiert (inkl. laufender Fokusphase).
+    var todayFocus: TimeInterval { logged(.focus, on: now) + (phase == .focus ? elapsed : 0) }
 
-    var bestDay: Int {
-        Dictionary(grouping: sessions) { cal.startOfDay(for: $0.end) }.values.map(\.count).max() ?? 0
-    }
+    /// Heute Pause gemacht (inkl. laufender Pause).
+    var todayBreak: TimeInterval { logged(.rest, on: now) + (phase.isBreak ? elapsed : 0) }
 
-    /// Aufeinanderfolgende Tage mit mindestens einem Pomodoro (heute zählt, sobald einer fertig ist).
-    var streak: Int {
-        let days = Set(sessions.map { cal.startOfDay(for: $0.end) })
-        var day = cal.startOfDay(for: now)
-        if !days.contains(day) { day = cal.date(byAdding: .day, value: -1, to: day)! }
-        var n = 0
-        while days.contains(day) {
-            n += 1
-            day = cal.date(byAdding: .day, value: -1, to: day)!
+    /// Abgeschlossene Fokus-Sessions pro Tag, ältester zuerst, letzter = heute.
+    func dailyCounts(days n: Int) -> [Int] {
+        var counts: [Date: Int] = [:]
+        for s in sessions where s.kind == .focus && s.completed {
+            counts[cal.startOfDay(for: s.end), default: 0] += 1
         }
-        return n
-    }
-
-    /// Anzahl der Pomodoros der letzten 7 Tage (ältester zuerst).
-    var lastSevenDays: [(date: Date, count: Int)] {
-        (0..<7).reversed().map { offset in
-            let d = cal.date(byAdding: .day, value: -offset, to: cal.startOfDay(for: now))!
-            return (d, count(on: d))
-        }
+        let today = cal.startOfDay(for: now)
+        return (0..<n).reversed().map { counts[cal.date(byAdding: .day, value: -$0, to: today)!] ?? 0 }
     }
 
     // MARK: Speichern
@@ -208,13 +278,22 @@ final class PomodoroModel: ObservableObject {
         defaults.set(try? enc.encode(settings), forKey: "settings")
         defaults.set(try? enc.encode(sessions), forKey: "sessions")
         defaults.set(cancelledCount, forKey: "cancelled")
-        if isActive, let endDate {
-            let rs = RunState(phase: phase, endDate: endDate, duration: phaseDuration, cycleCount: cycleCount)
+        defaults.set(cycleCount, forKey: "cycle")
+        if isActive {
+            let rs = RunState(phase: phase, endDate: endDate, pausedRemaining: pausedRemaining,
+                              duration: phaseDuration, cycleCount: cycleCount)
             defaults.set(try? enc.encode(rs), forKey: "run")
         } else {
             defaults.removeObject(forKey: "run")
-            defaults.set(cycleCount, forKey: "cycle")
         }
+
+        let today = Date()
+        SharedStore.write(WidgetSnapshot(
+            phase: phase, endDate: endDate, pausedRemaining: pausedRemaining, duration: phaseDuration,
+            focusMinutes: settings.focusMinutes,
+            todayFocus: logged(.focus, on: today), todayBreak: logged(.rest, on: today),
+            days: dailyCounts(days: 91), accent: settings.accent, updated: today))
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     /// Übernimmt Einstellungen und Record aus der alten App „Pomodoro Island“ (einmalig).
@@ -237,12 +316,15 @@ final class PomodoroModel: ObservableObject {
         if let d = defaults.data(forKey: "sessions"), let s = try? dec.decode([Session].self, from: d) { sessions = s }
         cancelledCount = defaults.integer(forKey: "cancelled")
         cycleCount = defaults.integer(forKey: "cycle")
-        // Laufenden Timer nach Neustart der App fortsetzen
-        if let d = defaults.data(forKey: "run"), let rs = try? dec.decode(RunState.self, from: d), rs.endDate > Date() {
-            phase = rs.phase
-            endDate = rs.endDate
-            phaseDuration = rs.duration
-            cycleCount = rs.cycleCount
+        // Laufenden oder pausierten Timer nach Neustart fortsetzen
+        if let d = defaults.data(forKey: "run"), let rs = try? dec.decode(RunState.self, from: d) {
+            if let p = rs.pausedRemaining {
+                phase = rs.phase; pausedRemaining = p; endDate = nil
+                phaseDuration = rs.duration; cycleCount = rs.cycleCount
+            } else if let e = rs.endDate, e > Date() {
+                phase = rs.phase; endDate = e
+                phaseDuration = rs.duration; cycleCount = rs.cycleCount
+            }
         }
     }
 }

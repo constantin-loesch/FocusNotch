@@ -13,7 +13,7 @@ struct NotchShape: Shape {
     }
 
     func path(in r: CGRect) -> Path {
-        let t = topRadius, b = min(bottomRadius, (r.height - t) / 1)
+        let t = topRadius, b = min(bottomRadius, r.height - t)
         var p = Path()
         p.move(to: CGPoint(x: r.minX, y: r.minY))
         p.addQuadCurve(to: CGPoint(x: r.minX + t, y: r.minY + t), control: CGPoint(x: r.minX + t, y: r.minY))
@@ -37,9 +37,8 @@ struct IslandView: View {
     @EnvironmentObject var ui: IslandUIState
 
     var body: some View {
-        let size = ui.size(active: model.isActive)
+        let size = ui.size()
         let t: CGFloat = ui.isExpanded ? 12 : 6
-        let hidden = !ui.hasNotch && !model.isActive && !ui.isExpanded
 
         VStack(spacing: 0) {
             ZStack(alignment: .top) {
@@ -48,58 +47,108 @@ struct IslandView: View {
                     .frame(width: size.width, height: size.height)
                     .shadow(color: .black.opacity(ui.isExpanded ? 0.45 : 0), radius: 14, y: 6)
 
-                Group {
+                VStack(spacing: 0) {
+                    HeaderRow(sideWidth: max(0, (size.width - 2 * t - ui.notchSize.width) / 2))
                     if ui.isExpanded {
-                        ExpandedView()
-                            .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .top)))
-                    } else if model.isActive {
-                        CollapsedView()
-                            .transition(.opacity)
+                        Group {
+                            if ui.showSettings { SettingsView() } else { MainPanel() }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                        .padding(.bottom, 18)
+                        .frame(maxHeight: .infinity)
+                        .transition(.opacity)
                     }
                 }
                 .padding(.horizontal, t)
                 .frame(width: size.width, height: size.height, alignment: .top)
                 .clipped()
             }
-            .opacity(hidden ? 0 : 1)
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .ignoresSafeArea()
         .animation(spring, value: ui.isExpanded)
-        .animation(spring, value: model.isActive)
         .animation(spring, value: ui.showSettings)
+        .animation(spring, value: model.phase)
+        .animation(spring, value: model.isPaused)
         .preferredColorScheme(.dark)
     }
 }
 
-// MARK: - Eingeklappt: Zeit links von der Kamera, Fortschritt rechts
+// MARK: - Kopfzeile neben der Notch (immer sichtbar)
+// Links: [Start/Pause] [Skip] Zeit – direkt an der Kamera. Rechts: Fortschrittsring.
+// Die Elemente bleiben beim Aufklappen an derselben Stelle, damit man sofort klicken kann.
 
-struct CollapsedView: View {
+struct HeaderRow: View {
     @EnvironmentObject var model: PomodoroModel
     @EnvironmentObject var ui: IslandUIState
+    var sideWidth: CGFloat
 
     var body: some View {
-        let color = Color(nsColor: model.phaseColor)
         HStack(spacing: 0) {
-            HStack(spacing: 5) {
-                Image(systemName: model.phase.isBreak ? "cup.and.saucer.fill" : "timer")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(color)
+            HStack(spacing: 8) {
+                if ui.isExpanded {
+                    HStack(spacing: 6) {
+                        Circle().fill(model.accent.opacity(model.isActive ? 1 : 0.35)).frame(width: 7, height: 7)
+                        Text(model.phaseLabel)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.75))
+                            .lineLimit(1)
+                    }
+                    .transition(.opacity)
+                }
+                Spacer(minLength: 0)
+                TimerButtons(size: 22)
                 Text(model.remainingString)
                     .font(.system(size: 14, weight: .semibold, design: .rounded).monospacedDigit())
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.white.opacity(model.isPaused ? 0.45 : (model.isActive ? 1 : 0.8)))
                     .contentTransition(.numericText(countsDown: true))
+                    .fixedSize()
             }
-            .frame(width: IslandUIState.sideWidth - 6, alignment: .center)
+            .padding(.leading, 14)
+            .padding(.trailing, 10)
+            .frame(width: sideWidth)
 
-            Spacer(minLength: ui.notchSize.width)
+            Color.clear.frame(width: ui.notchSize.width)
 
-            ProgressRing(progress: model.progress, color: color, lineWidth: 2.5)
-                .frame(width: 15, height: 15)
-                .frame(width: IslandUIState.sideWidth - 6)
+            HStack(spacing: 14) {
+                ProgressRing(progress: model.progress, color: model.accent, lineWidth: 2.5)
+                    .frame(width: 15, height: 15)
+                Spacer(minLength: 0)
+                if ui.isExpanded {
+                    IconButton(symbol: ui.showSettings ? "xmark" : "gearshape.fill") { ui.showSettings.toggle() }
+                    IconButton(symbol: "power") { NSApp.terminate(nil) }
+                }
+            }
+            .padding(.leading, 10)
+            .padding(.trailing, 16)
+            .frame(width: sideWidth)
         }
         .frame(height: ui.notchSize.height)
+    }
+}
+
+/// Start / Pause / Fortsetzen + Überspringen.
+struct TimerButtons: View {
+    @EnvironmentObject var model: PomodoroModel
+    var size: CGFloat
+
+    var body: some View {
+        HStack(spacing: 6) {
+            CircleButton(symbol: model.isRunning ? "pause.fill" : "play.fill",
+                         fill: model.accent, foreground: model.onAccent, size: size,
+                         help: model.isRunning ? "Anhalten" : (model.isPaused ? "Fortsetzen" : "Starten")) {
+                model.togglePause()
+            }
+            if model.isActive {
+                CircleButton(symbol: "forward.fill", fill: .white.opacity(0.16), foreground: .white, size: size,
+                             help: model.phase == .focus ? "Überspringen (zur Pause)" : "Pause überspringen") {
+                    model.skip()
+                }
+                .transition(.scale.combined(with: .opacity))
+            }
+        }
     }
 }
 
@@ -122,44 +171,6 @@ struct ProgressRing: View {
 
 // MARK: - Aufgeklappt
 
-struct ExpandedView: View {
-    @EnvironmentObject var model: PomodoroModel
-    @EnvironmentObject var ui: IslandUIState
-
-    var body: some View {
-        VStack(spacing: 0) {
-            // Zeile neben der Notch
-            HStack {
-                HStack(spacing: 6) {
-                    Circle().fill(Color(nsColor: model.phaseColor)).frame(width: 7, height: 7)
-                    Text(ui.showSettings ? "Einstellungen" : "FocusNotch · \(model.phase.title)")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.75))
-                }
-                Spacer()
-                HStack(spacing: 14) {
-                    IconButton(symbol: ui.showSettings ? "xmark" : "gearshape.fill") { ui.showSettings.toggle() }
-                    IconButton(symbol: "power") { NSApp.terminate(nil) }
-                }
-            }
-            .padding(.horizontal, 20)
-            .frame(height: ui.notchSize.height)
-
-            Group {
-                if ui.showSettings {
-                    SettingsView().transition(.opacity)
-                } else {
-                    MainPanel().transition(.opacity)
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
-            .padding(.bottom, 18)
-            .frame(maxHeight: .infinity)
-        }
-    }
-}
-
 struct MainPanel: View {
     var body: some View {
         HStack(spacing: 0) {
@@ -167,7 +178,7 @@ struct MainPanel: View {
             VDivider()
             TimerControl().frame(maxWidth: .infinity)
             VDivider()
-            RecordView().frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 18)
+            TodayView().frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 20)
         }
     }
 }
@@ -185,9 +196,6 @@ private enum Fmt {
     static let sec: DateFormatter = { let f = DateFormatter(); f.dateFormat = "ss"; return f }()
     static let day: DateFormatter = {
         let f = DateFormatter(); f.locale = Locale(identifier: "de_DE"); f.dateFormat = "EEEE, d. MMMM"; return f
-    }()
-    static let weekdayLetter: DateFormatter = {
-        let f = DateFormatter(); f.locale = Locale(identifier: "de_DE"); f.dateFormat = "EEEEE"; return f
     }()
 }
 
@@ -212,118 +220,82 @@ struct ClockView: View {
     }
 }
 
-// MARK: Timer + Start/Abbrechen
+// MARK: Timer + Steuerung
 
 struct TimerControl: View {
     @EnvironmentObject var model: PomodoroModel
 
     var body: some View {
-        let color = Color(nsColor: model.phase == .idle ? .systemOrange : model.phaseColor)
         VStack(spacing: 10) {
             ZStack {
-                ProgressRing(progress: model.progress, color: color, lineWidth: 6)
+                ProgressRing(progress: model.progress, color: model.accent, lineWidth: 6)
                 VStack(spacing: 0) {
                     Text(model.remainingString)
                         .font(.system(size: 22, weight: .bold, design: .rounded).monospacedDigit())
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.white.opacity(model.isPaused ? 0.5 : 1))
                         .contentTransition(.numericText(countsDown: true))
-                    Text(model.phase == .idle ? "\(model.settings.focusMinutes) min Fokus" : model.phase.title)
+                    Text(model.phase == .idle ? "\(model.settings.focusMinutes) min Fokus" : model.phaseLabel)
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(.white.opacity(0.5))
                 }
             }
             .frame(width: 100, height: 100)
 
-            switch model.phase {
-            case .idle:
-                PillButton(title: "Start", symbol: "play.fill", color: .orange) { model.startFocus() }
-            case .focus:
-                PillButton(title: "Abbrechen", symbol: "xmark", color: .red) { model.cancel() }
-            case .shortBreak, .longBreak:
-                PillButton(title: "Pause beenden", symbol: "forward.fill", color: .green) { model.skipBreak() }
-            }
-        }
-    }
-}
-
-// MARK: Record
-
-struct RecordView: View {
-    @EnvironmentObject var model: PomodoroModel
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            SectionLabel("Record")
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text("\(model.todayCount)")
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                Text("/ \(model.settings.dailyGoal) heute · \(model.todayMinutes) min")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.55))
-            }
-            GoalDots(done: model.todayCount, goal: model.settings.dailyGoal)
-            WeekBars(days: model.lastSevenDays)
-            HStack(spacing: 10) {
-                Stat(symbol: "flame.fill", color: .orange, value: "\(model.streak) T")
-                Stat(symbol: "trophy.fill", color: .yellow, value: "\(model.bestDay)")
-                Stat(symbol: "sum", color: .white, value: "\(model.totalCount)")
-                Stat(symbol: "xmark.circle", color: .red, value: "\(model.cancelledCount)")
-            }
-            .help("Serie · Bester Tag · Gesamt · Abgebrochen")
-        }
-    }
-}
-
-struct GoalDots: View {
-    var done: Int
-    var goal: Int
-    var body: some View {
-        HStack(spacing: 4) {
-            ForEach(0..<max(goal, 1), id: \.self) { i in
-                Circle()
-                    .fill(i < done ? Color.orange : Color.white.opacity(0.15))
-                    .frame(width: 7, height: 7)
-            }
-            if done > goal {
-                Text("+\(done - goal)").font(.system(size: 9, weight: .bold)).foregroundStyle(.orange)
-            }
-        }
-    }
-}
-
-struct WeekBars: View {
-    var days: [(date: Date, count: Int)]
-    var body: some View {
-        let maxCount = max(days.map(\.count).max() ?? 0, 1)
-        HStack(alignment: .bottom, spacing: 6) {
-            ForEach(days.indices, id: \.self) { i in
-                let d = days[i]
-                let isToday = i == days.count - 1
-                VStack(spacing: 2) {
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(isToday ? Color.orange : Color.white.opacity(d.count > 0 ? 0.45 : 0.12))
-                        .frame(width: 12, height: max(3, 26 * CGFloat(d.count) / CGFloat(maxCount)))
-                    Text(Fmt.weekdayLetter.string(from: d.date))
-                        .font(.system(size: 8, weight: .medium))
-                        .foregroundStyle(.white.opacity(isToday ? 0.9 : 0.4))
+            if model.isActive {
+                HStack(spacing: 8) {
+                    PillButton(title: model.isPaused ? "Weiter" : "Pause",
+                               symbol: model.isPaused ? "play.fill" : "pause.fill") { model.togglePause() }
+                    RoundIcon(symbol: "forward.fill", help: "Überspringen") { model.skip() }
+                    RoundIcon(symbol: "stop.fill", help: "Stoppen") { model.cancel() }
                 }
-                .help("\(d.count) Pomodoros")
+            } else {
+                PillButton(title: "Start", symbol: "play.fill") { model.start() }
             }
         }
-        .frame(height: 38, alignment: .bottom)
     }
 }
 
-struct Stat: View {
-    var symbol: String
-    var color: Color
-    var value: String
+// MARK: Heute + Sessions-Graph
+
+struct TodayView: View {
+    @EnvironmentObject var model: PomodoroModel
+    static let weeks = 13
+
     var body: some View {
-        HStack(spacing: 3) {
-            Image(systemName: symbol).font(.system(size: 9, weight: .bold)).foregroundStyle(color)
-            Text(value).font(.system(size: 11, weight: .semibold, design: .rounded).monospacedDigit())
-                .foregroundStyle(.white.opacity(0.8))
+        let days = model.dailyCounts(days: Self.weeks * 7)
+        VStack(alignment: .leading, spacing: 8) {
+            SectionLabel("Heute")
+            HStack(spacing: 18) {
+                StatBlock(title: "Fokus", value: formatDuration(model.todayFocus), color: model.accent)
+                StatBlock(title: "Pause", value: formatDuration(model.todayBreak), color: .white)
+            }
+            HStack {
+                SectionLabel("Sessions")
+                Spacer(minLength: 4)
+                Text("\(days.reduce(0, +)) in \(Self.weeks) Wochen")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.4))
+            }
+            .frame(width: CGFloat(Self.weeks) * 12 - 3)
+            HeatmapGrid(days: days, weeks: Self.weeks, cell: 9, gap: 3, color: model.accent, today: model.now)
+        }
+    }
+}
+
+struct StatBlock: View {
+    var title: String
+    var value: String
+    var color: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            HStack(spacing: 4) {
+                Circle().fill(color).frame(width: 5, height: 5)
+                Text(title).font(.system(size: 10, weight: .medium)).foregroundStyle(.white.opacity(0.5))
+            }
+            Text(value)
+                .font(.system(size: 17, weight: .bold, design: .rounded).monospacedDigit())
+                .foregroundStyle(.white)
         }
     }
 }
@@ -343,16 +315,19 @@ struct SettingsView: View {
                 StepperRow(label: "Lange Pause", value: $model.settings.longBreakMinutes, unit: "min", range: 5...60, step: 5)
             }
             VStack(alignment: .leading, spacing: 8) {
-                StepperRow(label: "Lange Pause alle", value: $model.settings.longBreakEvery, unit: "×", range: 2...8, step: 1)
-                StepperRow(label: "Tagesziel", value: $model.settings.dailyGoal, unit: "🍅", range: 1...16, step: 1)
+                StepperRow(label: "Lange Pause nach", value: $model.settings.longBreakEvery, unit: "Sess.", range: 2...8, step: 1)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Farbe").font(.system(size: 10, weight: .medium)).foregroundStyle(.white.opacity(0.55))
+                    ColorPickerRow(selection: $model.settings.accent)
+                }
                 Button {
                     if confirmReset { model.resetRecord(); confirmReset = false } else { confirmReset = true }
                 } label: {
-                    Text(confirmReset ? "Wirklich löschen?" : "Record zurücksetzen")
+                    Text(confirmReset ? "Wirklich löschen?" : "Statistik zurücksetzen")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(confirmReset ? .white : .red)
+                        .foregroundStyle(confirmReset ? .black : .white.opacity(0.7))
                         .frame(maxWidth: .infinity, minHeight: 24)
-                        .background(Capsule().fill(confirmReset ? Color.red : Color.red.opacity(0.15)))
+                        .background(Capsule().fill(confirmReset ? Color.white : Color.white.opacity(0.1)))
                 }
                 .buttonStyle(.plain)
             }
@@ -370,6 +345,26 @@ struct SettingsView: View {
             }
         }
         .frame(maxHeight: .infinity, alignment: .center)
+    }
+}
+
+struct ColorPickerRow: View {
+    @Binding var selection: AccentColor
+
+    var body: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.fixed(18), spacing: 7), count: 4), alignment: .leading, spacing: 7) {
+            ForEach(AccentColor.allCases) { c in
+                Button { selection = c } label: {
+                    Circle()
+                        .fill(c.color)
+                        .frame(width: 16, height: 16)
+                        .overlay(Circle().stroke(Color.white, lineWidth: selection == c ? 2 : 0).padding(-3))
+                        .frame(width: 18, height: 18)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 }
 
@@ -397,13 +392,15 @@ struct StepperRow: View {
 }
 
 struct SwitchRow: View {
+    @EnvironmentObject var model: PomodoroModel
     var label: String
     @Binding var isOn: Bool
+
     var body: some View {
         Button { isOn.toggle() } label: {
             HStack(spacing: 8) {
                 ZStack(alignment: isOn ? .trailing : .leading) {
-                    Capsule().fill(isOn ? Color.orange : Color.white.opacity(0.2)).frame(width: 30, height: 18)
+                    Capsule().fill(isOn ? model.accent : Color.white.opacity(0.2)).frame(width: 30, height: 18)
                     Circle().fill(.white).frame(width: 14, height: 14).padding(2)
                 }
                 .animation(.easeOut(duration: 0.15), value: isOn)
@@ -446,25 +443,53 @@ struct IconButton: View {
     }
 }
 
+struct CircleButton: View {
+    var symbol: String
+    var fill: Color
+    var foreground: Color
+    var size: CGFloat
+    var help: String
+    var action: () -> Void
+    @State private var hover = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: size * 0.42, weight: .bold))
+                .foregroundStyle(foreground)
+                .frame(width: size, height: size)
+                .background(Circle().fill(fill))
+                .brightness(hover ? 0.08 : 0)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hover = $0 }
+        .help(help)
+    }
+}
+
 struct RoundIcon: View {
     var symbol: String
+    var help: String = ""
     var action: () -> Void
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 9, weight: .bold))
                 .foregroundStyle(.white)
-                .frame(width: 20, height: 20)
+                .frame(width: 24, height: 24)
                 .background(Circle().fill(Color.white.opacity(0.14)))
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
+        .help(help)
     }
 }
 
 struct PillButton: View {
+    @EnvironmentObject var model: PomodoroModel
     var title: String
     var symbol: String
-    var color: Color
     var action: () -> Void
     @State private var hover = false
     var body: some View {
@@ -473,10 +498,10 @@ struct PillButton: View {
                 Image(systemName: symbol).font(.system(size: 10, weight: .bold))
                 Text(title).font(.system(size: 12, weight: .semibold))
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(model.onAccent)
             .padding(.horizontal, 14)
             .frame(height: 26)
-            .background(Capsule().fill(color.opacity(hover ? 0.95 : 0.75)))
+            .background(Capsule().fill(model.accent.opacity(hover ? 1 : 0.85)))
         }
         .buttonStyle(.plain)
         .onHover { hover = $0 }
