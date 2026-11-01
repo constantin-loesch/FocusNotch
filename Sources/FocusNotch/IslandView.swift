@@ -54,8 +54,8 @@ struct IslandView: View {
                             if ui.showSettings { SettingsView() } else { MainPanel() }
                         }
                         .padding(.horizontal, 20)
-                        .padding(.top, 8)
-                        .padding(.bottom, 18)
+                        .padding(.top, ui.showSettings ? 8 : 4)
+                        .padding(.bottom, ui.showSettings ? 18 : 14)
                         .frame(maxHeight: .infinity)
                         .transition(.opacity)
                     }
@@ -222,7 +222,7 @@ struct ClockView: View {
     @EnvironmentObject var model: PomodoroModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 2) {
             SectionLabel("Uhrzeit")
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(Fmt.hm.string(from: model.now))
@@ -235,6 +235,8 @@ struct ClockView: View {
             Text(Fmt.day.string(from: model.now))
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.white.opacity(0.55))
+            TimerControlButtons()
+                .padding(.top, 6)
         }
     }
 }
@@ -245,31 +247,36 @@ struct TimerControl: View {
     @EnvironmentObject var model: PomodoroModel
 
     var body: some View {
-        VStack(spacing: 10) {
-            ZStack {
-                ProgressRing(progress: model.progress, color: model.accent, lineWidth: 6)
-                VStack(spacing: 0) {
-                    Text(model.remainingString)
-                        .font(.system(size: 22, weight: .bold, design: .rounded).monospacedDigit())
-                        .foregroundStyle(.white.opacity(model.isPaused ? 0.5 : 1))
-                        .contentTransition(.numericText(countsDown: true))
-                    Text(model.phase == .idle ? "\(model.settings.focusMinutes) min Fokus" : model.phaseLabel)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.5))
-                }
+        ZStack {
+            ProgressRing(progress: model.progress, color: model.accent, lineWidth: 6)
+            VStack(spacing: 0) {
+                Text(model.remainingString)
+                    .font(.system(size: 22, weight: .bold, design: .rounded).monospacedDigit())
+                    .foregroundStyle(.white.opacity(model.isPaused ? 0.5 : 1))
+                    .contentTransition(.numericText(countsDown: true))
+                Text(model.phase == .idle ? "\(model.settings.focusMinutes) min Fokus" : model.phaseLabel)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.5))
             }
-            .frame(width: 100, height: 100)
+        }
+        .frame(width: 100, height: 100)
+    }
+}
 
-            if model.isActive {
-                HStack(spacing: 8) {
-                    PillButton(title: model.isPaused ? "Weiter" : "Pause",
-                               symbol: model.isPaused ? "play.fill" : "pause.fill") { model.togglePause() }
-                    RoundIcon(symbol: "forward.fill", help: "Überspringen") { model.skip() }
-                    RoundIcon(symbol: "stop.fill", help: "Stoppen") { model.cancel() }
-                }
-            } else {
-                PillButton(title: "Start", symbol: "play.fill") { model.start() }
+/// Start bzw. Pause/Weiter, Überspringen, Stoppen – unter der Uhrzeit.
+struct TimerControlButtons: View {
+    @EnvironmentObject var model: PomodoroModel
+
+    var body: some View {
+        if model.isActive {
+            HStack(spacing: 8) {
+                PillButton(title: model.isPaused ? "Weiter" : "Pause",
+                           symbol: model.isPaused ? "play.fill" : "pause.fill") { model.togglePause() }
+                RoundIcon(symbol: "forward.fill", help: "Überspringen") { model.skip() }
+                RoundIcon(symbol: "stop.fill", help: "Stoppen") { model.cancel() }
             }
+        } else {
+            PillButton(title: "Start", symbol: "play.fill") { model.start() }
         }
     }
 }
@@ -281,7 +288,7 @@ struct TodayView: View {
 
     var body: some View {
         let days = model.dailyCounts(days: RollingSessionsGrid.dayCount)
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             SectionLabel("Heute")
             HStack(spacing: 18) {
                 StatBlock(title: "Fokus", value: formatDuration(model.todayFocus), color: model.accent)

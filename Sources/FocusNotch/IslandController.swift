@@ -37,7 +37,9 @@ final class IslandUIState: ObservableObject {
 
     func size() -> CGSize {
         if isExpanded {
-            return CGSize(width: max(660, notchSize.width + 2 * Self.sideWidth + 80), height: notchSize.height + 200)
+            // Hauptansicht so hoch wie der runde Timer; Einstellungen brauchen mehr Platz
+            return CGSize(width: max(660, notchSize.width + 2 * Self.sideWidth + 80),
+                          height: notchSize.height + (showSettings ? 196 : 136))
         }
         return CGSize(width: notchSize.width + 2 * Self.sideWidth, height: notchSize.height)
     }
