@@ -114,8 +114,8 @@ struct HeaderRow: View {
             Color.clear.frame(width: ui.notchSize.width)
 
             HStack(spacing: 14) {
-                ProgressRing(progress: model.progress, color: model.accent, lineWidth: 2.5)
-                    .frame(width: 15, height: 15)
+                ProgressBar(progress: model.progress, color: model.accent)
+                    .frame(width: 72, height: 5)
                 Spacer(minLength: 0)
                 if ui.isExpanded {
                     IconButton(symbol: ui.showSettings ? "xmark" : "gearshape.fill") { ui.showSettings.toggle() }
@@ -148,6 +148,24 @@ struct TimerButtons: View {
                     model.skip()
                 }
                 .transition(.scale.combined(with: .opacity))
+            }
+        }
+    }
+}
+
+/// Waagerechte Fortschrittsleiste rechts neben der Notch.
+struct ProgressBar: View {
+    var progress: Double
+    var color: Color
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.white.opacity(0.15))
+                Capsule()
+                    .fill(color)
+                    .frame(width: max(progress > 0 ? geo.size.height : 0, geo.size.width * progress))
+                    .animation(.linear(duration: 0.5), value: progress)
             }
         }
     }
