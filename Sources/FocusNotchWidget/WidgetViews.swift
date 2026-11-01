@@ -75,11 +75,12 @@ struct WidgetPill: View {
             Image(systemName: action.symbol).font(.system(size: 10, weight: .heavy))
             Text(action.title).font(.system(size: 12, weight: .bold))
         }
-        // Abgedunkelter Modus: heller Button mit dunkler Schrift, ohne Rand
-        .foregroundStyle(fullColor ? accent.onAccent : .black)
+        // Abgedunkelter Modus: macOS macht dunkle Farben dort durchsichtig.
+        // Deshalb weiße Schrift auf einem nur leicht hellen Button, ohne Rand.
+        .foregroundStyle(fullColor ? accent.onAccent : .white)
         .padding(.horizontal, 13)
         .frame(height: 26)
-        .background(Capsule().fill(fullColor ? accent.color : Color.white))
+        .background(Capsule().fill(fullColor ? accent.color : Color.white.opacity(0.16)))
     }
 }
 

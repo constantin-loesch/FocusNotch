@@ -66,6 +66,14 @@ final class IslandController {
         panel.orderFrontRegardless()
 
         // Nach Ende einer Phase kurz aufklappen
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
+        ) { [weak self] note in
+            guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                  app.bundleIdentifier != Bundle.main.bundleIdentifier else { return }
+            MainActor.assumeIsolated { self?.previousApp = app }
+        }
+
         model.onPhaseFinished = { [weak self] in
             self?.pinnedUntil = Date().addingTimeInterval(4)
         }
@@ -76,6 +84,9 @@ final class IslandController {
         RunLoop.main.add(t, forMode: .common)
         mouseTimer = t
     }
+
+    /// Zuletzt aktive andere App – bekommt den Fokus nach einem Widget-Klick zurück.
+    private var previousApp: NSRunningApplication?
 
     /// Steuerung über URL (vom Widget).
     func handle(url: URL) {
@@ -93,7 +104,8 @@ final class IslandController {
             return
         default: return
         }
-        pinnedUntil = Date().addingTimeInterval(2.5) // kurz aufklappen als Rückmeldung
+        // Timer-Aktionen: nichts aufklappen und den Fokus sofort zurückgeben
+        if NSApp.isActive, let app = previousApp, !app.isTerminated { app.activate() }
     }
 
     private func targetScreen() -> NSScreen {
