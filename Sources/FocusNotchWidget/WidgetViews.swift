@@ -75,13 +75,11 @@ struct WidgetPill: View {
             Image(systemName: action.symbol).font(.system(size: 10, weight: .heavy))
             Text(action.title).font(.system(size: 12, weight: .bold))
         }
-        .foregroundStyle(fullColor ? accent.onAccent : .white)
+        // Abgedunkelter Modus: heller Button mit dunkler Schrift, ohne Rand
+        .foregroundStyle(fullColor ? accent.onAccent : .black)
         .padding(.horizontal, 13)
         .frame(height: 26)
-        .background(
-            Capsule().fill(fullColor ? accent.color : Color.white.opacity(0.22))
-        )
-        .overlay(fullColor ? nil : Capsule().stroke(Color.white.opacity(0.85), lineWidth: 1.2))
+        .background(Capsule().fill(fullColor ? accent.color : Color.white))
     }
 }
 

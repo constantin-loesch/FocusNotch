@@ -73,6 +73,7 @@ struct IslandView: View {
         .animation(spring, value: model.phase)
         .animation(spring, value: model.isPaused)
         .preferredColorScheme(.dark)
+        .focusEffectDisabled()
     }
 }
 

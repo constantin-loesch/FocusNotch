@@ -16,7 +16,7 @@ final class IslandPanel: NSPanel {
         level = NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue + 3)
         collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
     }
-    override var canBecomeKey: Bool { true }
+    override var canBecomeKey: Bool { false } // keine Tastatur-Fokusrahmen um die Buttons
     override var canBecomeMain: Bool { false }
 }
 
