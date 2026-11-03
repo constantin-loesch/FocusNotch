@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import Combine
 
-/// Randloses, transparentes Panel, das über der Menüleiste liegt.
+/// Borderless, transparent panel that sits above the menu bar.
 final class IslandPanel: NSPanel {
     init() {
         super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -16,11 +16,11 @@ final class IslandPanel: NSPanel {
         level = NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue + 3)
         collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
     }
-    override var canBecomeKey: Bool { false } // keine Tastatur-Fokusrahmen um die Buttons
+    override var canBecomeKey: Bool { false } // no keyboard focus rings around the buttons
     override var canBecomeMain: Bool { false }
 }
 
-/// Reagiert auf den ersten Klick, auch wenn das Panel nicht aktiv ist.
+/// Responds to the first click even when the panel isn't active.
 final class FirstMouseHostingView<V: View>: NSHostingView<V> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
@@ -32,12 +32,12 @@ final class IslandUIState: ObservableObject {
     @Published var notchSize = CGSize(width: 190, height: 32)
     @Published var hasNotch = true
 
-    /// Breite links und rechts neben der Notch im eingeklappten Zustand.
+    /// Width left and right of the notch when collapsed.
     static let sideWidth: CGFloat = 136
 
     func size() -> CGSize {
         if isExpanded {
-            // Hauptansicht so hoch wie der runde Timer; Einstellungen brauchen mehr Platz
+            // Main view as tall as the round timer; settings need more room
             return CGSize(width: max(660, notchSize.width + 2 * Self.sideWidth + 80),
                           height: notchSize.height + (showSettings ? 196 : 136))
         }
@@ -67,8 +67,8 @@ final class IslandController {
         layout()
         panel.orderFrontRegardless()
 
-        // Nach Ende einer Phase kurz aufklappen
-        // Befehle aus dem Widget (App Intents) – die App wird dabei nicht aktiviert
+        // Briefly expand when a phase ends
+        // Commands from the widget (App Intents) – the app is not activated
         for command in FocusCommand.all {
             DistributedNotificationCenter.default().addObserver(
                 forName: FocusCommand.notificationName(command), object: nil, queue: .main
@@ -96,23 +96,23 @@ final class IslandController {
         mouseTimer = t
     }
 
-    /// Zuletzt aktive andere App – bekommt den Fokus nach einem Widget-Klick zurück.
+    /// Last active other app – gets focus back after a widget click.
     private var previousApp: NSRunningApplication?
 
-    /// Steuerung über URL (vom Widget).
+    /// Control via URL (from the widget).
     func handle(url: URL) {
         guard url.scheme == "focusnotch", let command = url.host else { return }
         if command == "settings" {
             ui.showSettings = true
             ui.isExpanded = true
-            pinnedUntil = Date().addingTimeInterval(8) // offen lassen, bis die Maus da ist
+            pinnedUntil = Date().addingTimeInterval(8) // keep open until the mouse arrives
             return
         }
-        // Timer-Aktionen: nichts aufklappen und den Fokus sofort zurückgeben
+        // Timer actions: don't expand, hand focus back right away
         if perform(command), NSApp.isActive, let app = previousApp, !app.isTerminated { app.activate() }
     }
 
-    /// Führt einen Timer-Befehl aus. Gibt false zurück, wenn der Befehl unbekannt ist.
+    /// Runs a timer command. Returns false if the command is unknown.
     @discardableResult
     func perform(_ command: String) -> Bool {
         switch command {

@@ -17,7 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Klicks im Widget öffnen focusnotch://start, ://toggle, ://skip, ://stop
+    /// Widget clicks open focusnotch://start, ://toggle, ://skip, ://stop
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls { controller?.handle(url: url) }
     }

@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// FocusNotch-Logo: dunkles macOS-Icon, oben die Island (Start-Button + Fortschrittsleiste),
-/// darunter der Pomodoro-Ring. Gezeichnet auf einem 1024er-Raster.
+/// FocusNotch logo: dark macOS icon, the island at the top (start button + progress bar),
+/// the Pomodoro ring below. Drawn on a 1024 grid.
 struct AppIconView: View {
     var size: CGFloat = 1024
     var accent: Color = AccentColor.orange.color
@@ -13,12 +13,12 @@ struct AppIconView: View {
 
         ZStack {
             ZStack {
-                // Hintergrund
+                // Background
                 LinearGradient(colors: [Color(white: 0.16), Color(white: 0.02)], startPoint: .top, endPoint: .bottom)
                 RadialGradient(colors: [accent.opacity(0.22), .clear], center: UnitPoint(x: 0.5, y: 0.6),
                                startRadius: 0, endRadius: 420 * s)
 
-                // Pomodoro-Ring
+                // Pomodoro ring
                 ZStack {
                     Circle().stroke(Color.white.opacity(0.09), lineWidth: 58 * s)
                     Circle()
@@ -32,7 +32,7 @@ struct AppIconView: View {
                 .frame(width: 400 * s, height: 400 * s)
                 .offset(y: 62 * s)
 
-                // Island oben (bündig mit der Oberkante)
+                // Island at the top (flush with the top edge)
                 ZStack {
                     NotchShape(topRadius: 22 * s, bottomRadius: 52 * s)
                         .fill(Color.black)

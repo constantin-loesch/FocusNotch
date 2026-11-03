@@ -1,22 +1,22 @@
 import AppIntents
 import AppKit
 
-// Echte Widget-Buttons: laufen im Widget, öffnen die App nicht und
-// lösen sofort ein Neuzeichnen des Widgets aus (keine 5-Sekunden-Drossel).
+// Real widget buttons: they run inside the widget, don't open the app and
+// trigger an immediate widget redraw (no 5-second throttle).
 
 enum AppBridge {
     static let appBundleID = "de.constantin.focusnotch"
 
-    /// Schickt einen Befehl an die laufende App und wartet kurz, bis sie den neuen Stand geschrieben hat.
+    /// Sends a command to the running app and briefly waits until it has written the new state.
     static func send(_ command: String) async {
         let before = modificationDate()
         if NSRunningApplication.runningApplications(withBundleIdentifier: appBundleID).isEmpty {
-            NSWorkspace.shared.open(FocusURL.make(command)) // App läuft nicht: per URL starten
+            NSWorkspace.shared.open(FocusURL.make(command)) // App not running: launch it via URL
         } else {
             DistributedNotificationCenter.default().postNotificationName(
                 FocusCommand.notificationName(command), object: nil, userInfo: nil, deliverImmediately: true)
         }
-        for _ in 0..<30 { // höchstens 1,5 s
+        for _ in 0..<30 { // at most 1.5 s
             try? await Task.sleep(nanoseconds: 50_000_000)
             if modificationDate() != before { break }
         }
@@ -28,7 +28,7 @@ enum AppBridge {
 }
 
 struct ToggleTimerIntent: AppIntent {
-    static var title: LocalizedStringResource = "Timer starten oder anhalten"
+    static var title: LocalizedStringResource = "Start or pause timer"
     static var isDiscoverable: Bool = false
     func perform() async throws -> some IntentResult {
         await AppBridge.send("toggle")
@@ -37,7 +37,7 @@ struct ToggleTimerIntent: AppIntent {
 }
 
 struct SkipTimerIntent: AppIntent {
-    static var title: LocalizedStringResource = "Timer überspringen"
+    static var title: LocalizedStringResource = "Skip timer"
     static var isDiscoverable: Bool = false
     func perform() async throws -> some IntentResult {
         await AppBridge.send("skip")
@@ -46,7 +46,7 @@ struct SkipTimerIntent: AppIntent {
 }
 
 struct StopTimerIntent: AppIntent {
-    static var title: LocalizedStringResource = "Timer stoppen"
+    static var title: LocalizedStringResource = "Stop timer"
     static var isDiscoverable: Bool = false
     func perform() async throws -> some IntentResult {
         await AppBridge.send("stop")

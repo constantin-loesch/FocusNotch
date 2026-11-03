@@ -13,7 +13,7 @@ struct PomodoroSettings: Codable, Equatable {
 
     init() {}
 
-    // Fehlende/alte Felder einzeln mit Standardwerten auffüllen
+    // Fill missing/old fields with defaults one by one
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let d = PomodoroSettings()
@@ -27,7 +27,7 @@ struct PomodoroSettings: Codable, Equatable {
     }
 }
 
-/// Ein Eintrag im Verlauf: eine Fokus- oder Pausenphase (ganz oder teilweise).
+/// A history entry: a focus or break phase (complete or partial).
 struct Session: Codable, Identifiable {
     enum Kind: String, Codable { case focus, rest }
 
@@ -52,7 +52,7 @@ struct Session: Codable, Identifiable {
         end = try c.decode(Date.self, forKey: .end)
         if let s = try c.decodeIfPresent(TimeInterval.self, forKey: .seconds) {
             seconds = s
-        } else { // altes Format: nur Minuten
+        } else { // old format: minutes only
             seconds = TimeInterval(try c.decodeIfPresent(Int.self, forKey: .minutes) ?? 0) * 60
         }
         kind = try c.decodeIfPresent(Kind.self, forKey: .kind) ?? .focus
@@ -80,18 +80,18 @@ private struct RunState: Codable {
 @MainActor
 final class PomodoroModel: ObservableObject {
     @Published private(set) var phase: Phase = .idle
-    @Published private(set) var endDate: Date?                 // gesetzt, solange der Timer läuft
-    @Published private(set) var pausedRemaining: TimeInterval? // gesetzt, solange er pausiert ist
+    @Published private(set) var endDate: Date?                 // set while the timer is running
+    @Published private(set) var pausedRemaining: TimeInterval? // set while it is paused
     @Published private(set) var phaseDuration: TimeInterval = 0
     @Published private(set) var now = Date()
     @Published private(set) var sessions: [Session] = []
     @Published private(set) var cancelledCount = 0
     @Published var settings = PomodoroSettings() { didSet { save() } }
 
-    /// Wird aufgerufen, wenn eine Phase von selbst endet.
+    /// Called when a phase ends on its own.
     var onPhaseFinished: (() -> Void)?
 
-    private var cycleCount = 0 // abgeschlossene Pomodoros seit der letzten langen Pause
+    private var cycleCount = 0 // completed Pomodoros since the last long break
     private var ticker: Timer?
     private let defaults = UserDefaults.standard
     private var isLoading = false
@@ -103,10 +103,10 @@ final class PomodoroModel: ObservableObject {
         }
         RunLoop.main.add(t, forMode: .common)
         ticker = t
-        save() // Widget sofort mit aktuellem Stand versorgen
+        save() // Give the widget the current state right away
     }
 
-    // MARK: Zustand
+    // MARK: State
 
     var isActive: Bool { phase != .idle }
     var isPaused: Bool { isActive && pausedRemaining != nil }
@@ -128,11 +128,11 @@ final class PomodoroModel: ObservableObject {
     }
 
     var remainingString: String { formatClock(remaining) }
-    var phaseLabel: String { isPaused ? "Pausiert" : phase.title }
+    var phaseLabel: String { isPaused ? "Paused" : phase.title }
 
-    // MARK: Aktionen
+    // MARK: Actions
 
-    /// Startet einen Fokus-Timer bzw. setzt einen pausierten fort.
+    /// Starts a focus timer or resumes a paused one.
     func start() {
         if !isActive { begin(.focus, minutes: settings.focusMinutes) } else if isPaused { resume() }
     }
@@ -157,7 +157,7 @@ final class PomodoroModel: ObservableObject {
         save()
     }
 
-    /// Fokus → direkt in die Pause. Pause → beenden.
+    /// Focus → straight to the break. Break → end it.
     func skip() {
         guard isActive else { return }
         now = Date()
@@ -170,7 +170,7 @@ final class PomodoroModel: ObservableObject {
         }
     }
 
-    /// Timer komplett stoppen.
+    /// Stop the timer completely.
     func cancel() {
         guard isActive else { return }
         now = Date()
@@ -246,7 +246,7 @@ final class PomodoroModel: ObservableObject {
         save()
     }
 
-    // MARK: Statistik
+    // MARK: Statistics
 
     private var cal: Calendar { Calendar.current }
 
@@ -254,13 +254,13 @@ final class PomodoroModel: ObservableObject {
         sessions.filter { $0.kind == kind && cal.isDate($0.end, inSameDayAs: day) }.reduce(0) { $0 + $1.seconds }
     }
 
-    /// Heute fokussiert (inkl. laufender Fokusphase).
+    /// Focus time today (including the running focus phase).
     var todayFocus: TimeInterval { logged(.focus, on: now) + (phase == .focus ? elapsed : 0) }
 
-    /// Heute Pause gemacht (inkl. laufender Pause).
+    /// Break time today (including the running break).
     var todayBreak: TimeInterval { logged(.rest, on: now) + (phase.isBreak ? elapsed : 0) }
 
-    /// Abgeschlossene Fokus-Sessions pro Tag, ältester zuerst, letzter = heute.
+    /// Completed focus sessions per day, oldest first, last = today.
     func dailyCounts(days n: Int) -> [Int] {
         var counts: [Date: Int] = [:]
         for s in sessions where s.kind == .focus && s.completed {
@@ -270,7 +270,7 @@ final class PomodoroModel: ObservableObject {
         return (0..<n).reversed().map { counts[cal.date(byAdding: .day, value: -$0, to: today)!] ?? 0 }
     }
 
-    // MARK: Speichern
+    // MARK: Persistence
 
     private func save() {
         guard !isLoading else { return }
@@ -296,7 +296,7 @@ final class PomodoroModel: ObservableObject {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
-    /// Übernimmt Einstellungen und Record aus der alten App „Pomodoro Island“ (einmalig).
+    /// Migrates settings and history from the old "Pomodoro Island" app (once).
     private func migrateFromPomodoroIsland() {
         guard !defaults.bool(forKey: "migratedFromPomodoroIsland") else { return }
         defaults.set(true, forKey: "migratedFromPomodoroIsland")
@@ -316,7 +316,7 @@ final class PomodoroModel: ObservableObject {
         if let d = defaults.data(forKey: "sessions"), let s = try? dec.decode([Session].self, from: d) { sessions = s }
         cancelledCount = defaults.integer(forKey: "cancelled")
         cycleCount = defaults.integer(forKey: "cycle")
-        // Laufenden oder pausierten Timer nach Neustart fortsetzen
+        // Resume a running or paused timer after a restart
         if let d = defaults.data(forKey: "run"), let rs = try? dec.decode(RunState.self, from: d) {
             if let p = rs.pausedRemaining {
                 phase = rs.phase; pausedRemaining = p; endDate = nil

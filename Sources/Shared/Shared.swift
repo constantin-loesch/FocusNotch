@@ -1,24 +1,24 @@
 import SwiftUI
 import Foundation
 
-// Code, den App und Widget gemeinsam nutzen.
+// Code shared by the app and the widget.
 
 enum Phase: String, Codable {
     case idle, focus, shortBreak, longBreak
 
     var title: String {
         switch self {
-        case .idle: return "Bereit"
-        case .focus: return "Fokus"
-        case .shortBreak: return "Kurze Pause"
-        case .longBreak: return "Lange Pause"
+        case .idle: return "Ready"
+        case .focus: return "Focus"
+        case .shortBreak: return "Short Break"
+        case .longBreak: return "Long Break"
         }
     }
 
     var isBreak: Bool { self == .shortBreak || self == .longBreak }
 }
 
-/// Die eine Akzentfarbe der App (in den Einstellungen wählbar).
+/// The app's single accent color (selectable in settings).
 enum AccentColor: String, Codable, CaseIterable, Identifiable {
     case orange, red, pink, purple, blue, teal, green, yellow, gray
 
@@ -38,11 +38,11 @@ enum AccentColor: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    /// Text-/Symbolfarbe auf der Akzentfarbe.
+    /// Text/icon color on top of the accent color.
     var onAccent: Color { self == .yellow || self == .gray ? .black : .white }
 }
 
-/// Befehle vom Widget an die App per System-Benachrichtigung (ohne die App zu öffnen).
+/// Commands from the widget to the app via system notification (without opening the app).
 enum FocusCommand {
     static let all = ["start", "toggle", "skip", "stop"]
     static func notificationName(_ command: String) -> Notification.Name {
@@ -50,7 +50,7 @@ enum FocusCommand {
     }
 }
 
-/// URLs, mit denen das Widget die App steuert (focusnotch://start usw.).
+/// URLs the widget uses to control the app (focusnotch://start etc.).
 enum FocusURL {
     static func make(_ action: String) -> URL { URL(string: "focusnotch://\(action)")! }
 }
@@ -67,30 +67,30 @@ func formatDuration(_ seconds: TimeInterval) -> String {
     return m % 60 == 0 ? "\(m / 60) h" : "\(m / 60) h \(m % 60) min"
 }
 
-// MARK: - Vorschau-Modus (Screenshots)
+// MARK: - Preview mode (screenshots)
 
 private struct PreviewModeKey: EnvironmentKey { static let defaultValue = false }
 
 extension EnvironmentValues {
-    /// true beim Rendern außerhalb von WidgetKit: ersetzt Links/ProgressViews durch statische Ansichten.
+    /// true when rendering outside WidgetKit: replaces links/progress views with static views.
     var focusPreviewMode: Bool {
         get { self[PreviewModeKey.self] }
         set { self[PreviewModeKey.self] = newValue }
     }
 }
 
-// MARK: - Datenaustausch App → Widget
+// MARK: - Data exchange app → widget
 
-/// Zustand, den die App für das Widget als JSON ablegt.
+/// State the app stores as JSON for the widget.
 struct WidgetSnapshot: Codable {
     var phase: Phase
     var endDate: Date?
     var pausedRemaining: TimeInterval?
     var duration: TimeInterval
     var focusMinutes: Int
-    var todayFocus: TimeInterval   // bereits erfasste Fokuszeit heute (ohne laufende Phase)
-    var todayBreak: TimeInterval   // bereits erfasste Pausenzeit heute (ohne laufende Phase)
-    var days: [Int]                // abgeschlossene Sessions pro Tag, ältester zuerst, letzter = Tag von `updated`
+    var todayFocus: TimeInterval   // focus time logged today (without the running phase)
+    var todayBreak: TimeInterval   // break time logged today (without the running phase)
+    var days: [Int]                // completed sessions per day, oldest first, last = day of `updated`
     var accent: AccentColor
     var updated: Date
 
@@ -113,7 +113,7 @@ struct WidgetSnapshot: Codable {
         var isRunning: Bool { isActive && !paused }
     }
 
-    /// Zustand zu einem bestimmten Zeitpunkt (abgelaufene Timer, Tageswechsel).
+    /// State at a given point in time (expired timers, day change).
     func resolved(at date: Date) -> Resolved {
         var r = Resolved(phase: phase, endDate: endDate, paused: pausedRemaining != nil, remaining: 0,
                          duration: duration, todayFocus: todayFocus, todayBreak: todayBreak, days: days)
@@ -143,9 +143,9 @@ struct WidgetSnapshot: Codable {
 }
 
 enum SharedStore {
-    /// ~/Library/Application Support/FocusNotch (auch aus der Widget-Sandbox der echte Home-Ordner).
+    /// ~/Library/Application Support/FocusNotch (the real home folder, even from the widget sandbox).
     static var directory: URL {
-        // Für Screenshots/Tests umlenkbar, damit die echten Daten unberührt bleiben
+        // Can be redirected for screenshots/tests so the real data stays untouched
         if let dir = ProcessInfo.processInfo.environment["FOCUSNOTCH_SHARED_DIR"] { return URL(fileURLWithPath: dir) }
         let home = getpwuid(getuid()).map { String(cString: $0.pointee.pw_dir) } ?? NSHomeDirectory()
         return URL(fileURLWithPath: home).appendingPathComponent("Library/Application Support/FocusNotch", isDirectory: true)
@@ -164,19 +164,19 @@ enum SharedStore {
     }
 }
 
-// MARK: - Kästchen-Graph (Sessions der letzten 14 Tage)
+// MARK: - Box grid (sessions of the last 14 days)
 
-/// Rollende 14 Tage: ein Kästchen pro Tag, ältester links oben, heute rechts unten.
-/// Die Farbstufen passen sich dem besten Tag im Zeitraum an; die Zahl steht im Kästchen.
+/// Rolling 14 days: one box per day, oldest top left, today bottom right.
+/// Color levels scale to the best day in the period; the count is shown in the box.
 struct RollingSessionsGrid: View {
     static let dayCount = 14
 
-    var days: [Int]            // ältester zuerst, letzter = heute (es zählen nur die letzten 14)
+    var days: [Int]            // oldest first, last = today (only the last 14 count)
     var cell: CGFloat
     var gap: CGFloat
     var color: Color
     var numberColor: Color = .white
-    var intensityScale: Double = 1 // < 1 im abgedunkelten Widget-Modus, damit die Zahlen lesbar bleiben
+    var intensityScale: Double = 1 // < 1 in the dimmed widget mode so the numbers stay readable
 
     var body: some View {
         let last = Array(days.suffix(Self.dayCount))

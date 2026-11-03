@@ -1,10 +1,10 @@
 #!/bin/bash
-# Gemeinsame Helfer für build.sh und die Werkzeuge in tools/.
+# Shared helpers for build.sh and the tools in tools/.
 
 TARGET=arm64-apple-macos14.0
 SDK_DIR=/Library/Developer/CommandLineTools/SDKs
 
-# Wählt ein macOS-SDK, das zum installierten Swift-Compiler passt (Ergebnis in $SDK).
+# Picks a macOS SDK that matches the installed Swift compiler (result in $SDK).
 pick_sdk() {
   mkdir -p build
   echo 'import SwiftUI' > build/sdkcheck.swift
@@ -13,10 +13,10 @@ pick_sdk() {
     if swiftc -typecheck -sdk "$CANDIDATE" -target $TARGET build/sdkcheck.swift 2>/dev/null; then SDK="$CANDIDATE"; break; fi
   done
   rm -f build/sdkcheck.swift
-  [ -n "$SDK" ] || { echo "Kein passendes macOS-SDK gefunden"; exit 1; }
+  [ -n "$SDK" ] || { echo "No matching macOS SDK found"; exit 1; }
 }
 
-# App-Quellen ohne main.swift (für Werkzeuge mit eigenem Einstiegspunkt)
+# App sources without main.swift (for tools with their own entry point)
 app_sources_without_main() {
   ls Sources/FocusNotch/*.swift | grep -v '/main.swift$'
 }

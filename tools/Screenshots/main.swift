@@ -1,14 +1,14 @@
 import AppKit
 import SwiftUI
 
-// Rendert die README-Bilder aus den echten App- und Widget-Ansichten mit Demo-Daten.
-// Aufruf über tools/screenshots.sh (lenkt die Widget-Daten in einen temporären Ordner um).
+// Renders the README images from the real app and widget views with demo data.
+// Run via tools/screenshots.sh (redirects the widget data to a temporary folder).
 
 let notch = CGSize(width: 185, height: 32)
 
 @MainActor
 enum Demo {
-    /// Sessions der letzten 14 Tage (letzter Wert = heute)
+    /// Sessions of the last 14 days (last value = today)
     static let counts = [4, 6, 3, 0, 5, 8, 7, 2, 6, 4, 0, 5, 7, 3]
 
     static func prepare(running: Bool) {
@@ -29,7 +29,7 @@ enum Demo {
         d.set(try? JSONEncoder().encode(PomodoroSettings()), forKey: "settings")
         d.set(true, forKey: "migratedFromPomodoroIsland")
         d.set(1, forKey: "cycle")
-        if running { // Fokus läuft seit gut 10 Minuten
+        if running { // Focus has been running for about 10 minutes
             let run: [String: Any] = ["phase": "focus", "duration": 1500, "cycleCount": 1,
                                       "endDate": now.addingTimeInterval(14 * 60 + 23).timeIntervalSinceReferenceDate]
             d.set(try? JSONSerialization.data(withJSONObject: run), forKey: "run")
@@ -39,7 +39,7 @@ enum Demo {
     }
 }
 
-// MARK: - Bühne
+// MARK: - Stage
 
 struct Wallpaper: View {
     var body: some View {
@@ -58,14 +58,14 @@ struct Wallpaper: View {
 
 struct MenuBar: View {
     static let clock: DateFormatter = {
-        let f = DateFormatter(); f.locale = Locale(identifier: "de_DE"); f.dateFormat = "EEE d. MMM HH:mm"; return f
+        let f = DateFormatter(); f.locale = Locale(identifier: "en_US"); f.dateFormat = "EEE MMM d  HH:mm"; return f
     }()
 
     var body: some View {
         HStack(spacing: 18) {
             Image(systemName: "apple.logo").font(.system(size: 14, weight: .semibold))
             Text("Finder").fontWeight(.bold)
-            Text("Ablage"); Text("Bearbeiten")
+            Text("File"); Text("Edit")
             Spacer()
             Image(systemName: "wifi")
             Image(systemName: "battery.75percent")
@@ -79,7 +79,7 @@ struct MenuBar: View {
     }
 }
 
-/// Oberer Bildschirmrand mit Island.
+/// Top edge of the screen with the island.
 struct Screen: View {
     let model: PomodoroModel
     var expanded = false
@@ -131,18 +131,18 @@ struct Widgets: View {
     }
 }
 
-// MARK: - Rendern
+// MARK: - Rendering
 
 @MainActor
-func save(_ name: String, width: CGFloat, height: CGFloat, @ViewBuilder _ view: () -> some View) {
+func save(_ name: String, width: CGFloat, height: CGFloat, scale: CGFloat = 2, @ViewBuilder _ view: () -> some View) {
     let content = view()
         .frame(width: width, height: height)
         .environment(\.colorScheme, .dark)
     let renderer = ImageRenderer(content: content)
-    renderer.scale = 2
+    renderer.scale = scale
     guard let cg = renderer.cgImage,
           let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else {
-        fatalError("Rendern fehlgeschlagen: \(name)")
+        fatalError("Rendering failed: \(name)")
     }
     let url = URL(fileURLWithPath: CommandLine.arguments[1]).appendingPathComponent("\(name).png")
     try! png.write(to: url)
@@ -160,7 +160,7 @@ MainActor.assumeIsolated {
     let idle = PomodoroModel()
     let idleSnap = SharedStore.read()!
 
-    print("Bilder:")
+    print("Images:")
     save("hero", width: 1280, height: 560) {
         ZStack(alignment: .top) {
             Screen(model: running, expanded: true, menuBar: true)
@@ -176,7 +176,39 @@ MainActor.assumeIsolated {
         ZStack { Wallpaper(); Widgets(idle: idleSnap, running: runningSnap) }
     }
 
-    // Alle Akzentfarben (eingeklappt, Timer läuft)
+    // GitHub social preview (1280×640, shown when the repo link is shared)
+    save("social-preview", width: 1280, height: 640, scale: 1) {
+        ZStack {
+            Wallpaper()
+            Color.black.opacity(0.25)
+            HStack(spacing: 56) {
+                VStack(alignment: .leading, spacing: 18) {
+                    AppIconView(size: 190)
+                        .padding(.leading, -22)
+                    Text("FocusNotch")
+                        .font(.system(size: 76, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white)
+                    Text("A Pomodoro timer in your\nMacBook's notch – with a\ndesktop widget.")
+                        .font(.system(size: 30, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.8))
+                        .lineSpacing(4)
+                }
+                VStack(spacing: 36) {
+                    Screen(model: running)
+                        .frame(width: 520, height: 64)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .shadow(color: .black.opacity(0.35), radius: 20, y: 10)
+                    WidgetCard(width: 344, height: 164) {
+                        MediumWidgetView(s: runningSnap.resolved(at: Date()), date: Date(), accent: runningSnap.accent)
+                    }
+                    .scaleEffect(1.3)
+                    .padding(.vertical, 24)
+                }
+            }
+        }
+    }
+
+    // All accent colors (collapsed, timer running)
     var strips: [(AccentColor, PomodoroModel)] = []
     for c in AccentColor.allCases {
         Demo.prepare(running: true)

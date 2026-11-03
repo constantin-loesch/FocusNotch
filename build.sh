@@ -1,7 +1,7 @@
 #!/bin/bash
-# Baut FocusNotch.app (inkl. Desktop-Widget) in diesem Ordner.
-#   ./build.sh          → bauen
-#   ./build.sh install  → bauen, nach /Applications kopieren und starten
+# Builds FocusNotch.app (including the desktop widget) in this folder.
+#   ./build.sh          → build
+#   ./build.sh install  → build, copy to /Applications and launch
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -13,10 +13,10 @@ VERSION=$(cat VERSION)
 BUILD_NUMBER=$(git rev-list --count HEAD 2>/dev/null || echo 1)
 
 FLAGS=(-O -swift-version 5 -sdk "$SDK" -target $TARGET)
-echo "Baue App…"
+echo "Building app…"
 swiftc "${FLAGS[@]}" -module-name FocusNotch -o build/FocusNotch \
   Sources/Shared/*.swift Sources/FocusNotch/*.swift
-echo "Baue Widget…"
+echo "Building widget…"
 swiftc "${FLAGS[@]}" -parse-as-library -application-extension -module-name FocusNotchWidget -o build/FocusNotchWidget \
   -Xlinker -e -Xlinker _NSExtensionMain \
   Sources/Shared/*.swift Sources/FocusNotchWidget/*.swift
@@ -72,18 +72,18 @@ cat > "$WEX/Contents/Info.plist" <<PLIST
 </dict></plist>
 PLIST
 
-# Datei-Attribute entfernen (sonst verweigert codesign), dann erst Widget, dann App signieren
+# Strip extended attributes (codesign refuses otherwise), then sign the widget first, then the app
 xattr -cr "$APP"
 codesign --force --sign - --entitlements Sources/FocusNotchWidget/FocusNotchWidget.entitlements "$WEX"
 codesign --force --sign - "$APP"
-echo "Fertig: $APP"
+echo "Done: $APP"
 
 if [ "${1:-}" = "install" ]; then
   pkill -x FocusNotch 2>/dev/null || true
   rm -rf "/Applications/$APP"
   cp -R "$APP" /Applications/
-  "$LSREGISTER" -u "$PWD/$APP" 2>/dev/null || true  # Kopie im Projektordner abmelden (sonst doppeltes Widget)
+  "$LSREGISTER" -u "$PWD/$APP" 2>/dev/null || true  # unregister the copy in the project folder (avoids a duplicate widget)
   "$LSREGISTER" -f "/Applications/$APP"
   open "/Applications/$APP"
-  echo "Installiert: /Applications/$APP"
+  echo "Installed: /Applications/$APP"
 fi

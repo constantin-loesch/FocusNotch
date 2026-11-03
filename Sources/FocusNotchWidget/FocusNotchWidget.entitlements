@@ -4,7 +4,7 @@
 <dict>
     <key>com.apple.security.app-sandbox</key>
     <true/>
-    <!-- Widget darf die Statusdatei der App lesen -->
+    <!-- The widget may read the app's state file -->
     <key>com.apple.security.temporary-exception.files.home-relative-path.read-only</key>
     <array>
         <string>/Library/Application Support/FocusNotch/</string>

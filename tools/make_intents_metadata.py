@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""Erzeugt Metadata.appintents für das Widget (macht sonst Xcode beim Bauen).
+"""Generates Metadata.appintents for the widget (normally Xcode does this at build time).
 
-Aufruf: make_intents_metadata.py <widget-binary> <ausgabe-ordner>
-Ohne diese Datei erkennt macOS die Widget-Buttons (App Intents) nicht.
+Usage: make_intents_metadata.py <widget-binary> <output-folder>
+Without this file macOS doesn't recognize the widget buttons (App Intents).
 """
 import json, os, re, subprocess, sys
 
 binary, out_dir = sys.argv[1], sys.argv[2]
 MODULE = "FocusNotchWidget"
 TITLES = {
-    "ToggleTimerIntent": "Timer starten oder anhalten",
-    "SkipTimerIntent": "Timer überspringen",
-    "StopTimerIntent": "Timer stoppen",
+    "ToggleTimerIntent": "Start or pause timer",
+    "SkipTimerIntent": "Skip timer",
+    "StopTimerIntent": "Stop timer",
 }
 
-# Echte (gemangelte) Swift-Typnamen aus dem Binary lesen
+# Read the real (mangled) Swift type names from the binary
 symbols = subprocess.run(["nm", binary], capture_output=True, text=True, check=True).stdout
 mangled = {}
 for m in re.finditer(r"_\$s(\d+%s\d+(\w+?Intent)V)Mn\b" % MODULE, symbols):
@@ -23,7 +23,7 @@ for m in re.finditer(r"_\$s(\d+%s\d+(\w+?Intent)V)Mn\b" % MODULE, symbols):
 actions = {}
 for name, title in TITLES.items():
     if name not in mangled:
-        sys.exit(f"Intent {name} nicht im Binary gefunden")
+        sys.exit(f"Intent {name} not found in binary")
     actions[name] = {
         "assistantDefinedSchemas": [], "assistantDefinedSchemaTraits": [],
         "authenticationPolicy": 0,
@@ -54,4 +54,4 @@ with open(os.path.join(out_dir, "extract.actionsdata"), "w") as f:
     json.dump(data, f, indent=2, ensure_ascii=False)
 with open(os.path.join(out_dir, "version.json"), "w") as f:
     json.dump({"toolsVersion": "27A200c", "version": "3.0"}, f, indent=2)
-print("App-Intents-Metadaten:", ", ".join(f"{k}={v}" for k, v in mangled.items()))
+print("App Intents metadata:", ", ".join(f"{k}={v}" for k, v in mangled.items()))

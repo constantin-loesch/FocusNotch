@@ -1,7 +1,7 @@
 import SwiftUI
 import WidgetKit
 
-// Ansichten des Desktop-Widgets (ohne @main, damit sie sich auch offscreen rendern lassen).
+// Desktop widget views (no @main, so they can also be rendered offscreen).
 
 struct WidgetHeader: View {
     @Environment(\.focusPreviewMode) private var previewMode
@@ -12,7 +12,7 @@ struct WidgetHeader: View {
     var body: some View {
         HStack(spacing: 5) {
             Circle().fill(accent.color.opacity(s.isActive ? 1 : 0.4)).frame(width: 7, height: 7)
-            Text(s.paused ? "Pausiert" : s.phase.title)
+            Text(s.paused ? "Paused" : s.phase.title)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.7))
             Spacer(minLength: 0)
@@ -54,7 +54,7 @@ struct WidgetTimeText: View {
     }
 }
 
-/// Hauptaktion: Start (bereit), Pause (läuft), Weiter (pausiert).
+/// Primary action: Start (ready), Pause (running), Resume (paused).
 struct PrimaryAction {
     let title: String
     let symbol: String
@@ -64,7 +64,7 @@ struct PrimaryAction {
         if !s.isActive {
             title = "Start"; symbol = "play.fill"; url = FocusURL.make("start")
         } else if s.paused {
-            title = "Weiter"; symbol = "play.fill"; url = FocusURL.make("toggle")
+            title = "Resume"; symbol = "play.fill"; url = FocusURL.make("toggle")
         } else {
             title = "Pause"; symbol = "pause.fill"; url = FocusURL.make("toggle")
         }
@@ -83,8 +83,8 @@ struct WidgetPill: View {
             Text(action.title).font(.system(size: 12, weight: .bold)).lineLimit(1)
         }
         .fixedSize()
-        // Abgedunkelter Modus: macOS macht dunkle Farben dort durchsichtig.
-        // Deshalb weiße Schrift auf einem nur leicht hellen Button, ohne Rand.
+        // Dimmed mode: macOS turns dark colors transparent there.
+        // So use white text on a only slightly lighter button, without a border.
         .foregroundStyle(fullColor ? accent.onAccent : .white)
         .padding(.horizontal, 13)
         .frame(height: 26)
@@ -148,7 +148,7 @@ struct SmallWidgetView: View {
             WidgetHeader(s: s, accent: accent)
             Spacer(minLength: 4)
             WidgetTimeText(s: s, date: date, size: 34)
-            Text("\(formatDuration(s.todayFocus)) Fokus heute")
+            Text("\(formatDuration(s.todayFocus)) focus today")
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(.white.opacity(0.5))
             Spacer(minLength: 6)
@@ -188,16 +188,16 @@ struct MediumWidgetView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("HEUTE")
+                Text("TODAY")
                     .font(.system(size: 9, weight: .bold)).tracking(1.2)
                     .foregroundStyle(.white.opacity(0.4))
                 HStack(spacing: 12) {
-                    WidgetStat(title: "Fokus", value: formatDuration(s.todayFocus), color: accent.color)
-                    WidgetStat(title: "Pause", value: formatDuration(s.todayBreak), color: .white)
+                    WidgetStat(title: "Focus", value: formatDuration(s.todayFocus), color: accent.color)
+                    WidgetStat(title: "Break", value: formatDuration(s.todayBreak), color: .white)
                 }
                 Spacer(minLength: 0)
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    Text("SESSIONS · 14 TAGE")
+                    Text("SESSIONS · 14 DAYS")
                         .font(.system(size: 8, weight: .bold)).tracking(1)
                         .foregroundStyle(.white.opacity(0.4))
                     Text("\(s.days.suffix(RollingSessionsGrid.dayCount).reduce(0, +))")

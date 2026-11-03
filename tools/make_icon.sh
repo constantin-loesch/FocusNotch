@@ -1,5 +1,5 @@
 #!/bin/bash
-# Rendert das Logo und erzeugt daraus Resources/AppIcon.icns und docs/images/logo.png.
+# Renders the logo and creates Resources/AppIcon.icns and docs/images/logo.png from it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source tools/common.sh
@@ -17,4 +17,4 @@ for SIZE in 16 32 128 256 512; do
 done
 iconutil -c icns "$ICONSET" -o Resources/AppIcon.icns
 sips -z 512 512 build/logo-1024.png --out docs/images/logo.png >/dev/null
-echo "Fertig: Resources/AppIcon.icns, docs/images/logo.png"
+echo "Done: Resources/AppIcon.icns, docs/images/logo.png"

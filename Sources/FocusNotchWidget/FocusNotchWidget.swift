@@ -19,7 +19,7 @@ struct FocusProvider: TimelineProvider {
         let now = Date()
         let snap = SharedStore.read() ?? .placeholder
         let cal = Calendar.current
-        // Neu laden um Mitternacht oder wenn der laufende Timer endet
+        // Reload at midnight or when the running timer ends
         var next = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: now))!.addingTimeInterval(5)
         if snap.pausedRemaining == nil, let end = snap.endDate, end > now {
             next = min(next, end.addingTimeInterval(1))
@@ -52,7 +52,7 @@ struct FocusNotchWidget: Widget {
             FocusWidgetView(entry: entry)
         }
         .configurationDisplayName("FocusNotch")
-        .description("Pomodoro starten, anhalten und deinen Fokus von heute sehen.")
+        .description("Start and pause your Pomodoro and see today's focus.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
