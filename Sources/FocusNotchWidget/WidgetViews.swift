@@ -5,6 +5,7 @@ import WidgetKit
 
 struct WidgetHeader: View {
     @Environment(\.focusPreviewMode) private var previewMode
+    @Environment(\.focusLanguage) private var lang
     let s: WidgetSnapshot.Resolved
     let accent: AccentColor
     var showSettings = false
@@ -12,7 +13,7 @@ struct WidgetHeader: View {
     var body: some View {
         HStack(spacing: 5) {
             Circle().fill(accent.color.opacity(s.isActive ? 1 : 0.4)).frame(width: 7, height: 7)
-            Text(s.paused ? "Paused" : s.phase.title)
+            Text(s.paused ? lang.pick("Paused", "Pausiert") : s.phase.title(lang))
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.7))
             Spacer(minLength: 0)
@@ -60,11 +61,11 @@ struct PrimaryAction {
     let symbol: String
     let url: URL
 
-    init(_ s: WidgetSnapshot.Resolved) {
+    init(_ s: WidgetSnapshot.Resolved, _ lang: AppLanguage) {
         if !s.isActive {
             title = "Start"; symbol = "play.fill"; url = FocusURL.make("start")
         } else if s.paused {
-            title = "Resume"; symbol = "play.fill"; url = FocusURL.make("toggle")
+            title = lang.pick("Resume", "Weiter"); symbol = "play.fill"; url = FocusURL.make("toggle")
         } else {
             title = "Pause"; symbol = "pause.fill"; url = FocusURL.make("toggle")
         }
@@ -139,6 +140,7 @@ struct WidgetProgress: View {
 }
 
 struct SmallWidgetView: View {
+    @Environment(\.focusLanguage) private var lang
     let s: WidgetSnapshot.Resolved
     let date: Date
     let accent: AccentColor
@@ -148,11 +150,11 @@ struct SmallWidgetView: View {
             WidgetHeader(s: s, accent: accent)
             Spacer(minLength: 4)
             WidgetTimeText(s: s, date: date, size: 34)
-            Text("\(formatDuration(s.todayFocus)) focus today")
+            Text(formatDuration(s.todayFocus) + lang.pick(" focus today", " Fokus heute"))
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(.white.opacity(0.5))
             Spacer(minLength: 6)
-            Button(intent: ToggleTimerIntent()) { WidgetPill(action: PrimaryAction(s), accent: accent) }
+            Button(intent: ToggleTimerIntent()) { WidgetPill(action: PrimaryAction(s, lang), accent: accent) }
                 .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -161,6 +163,7 @@ struct SmallWidgetView: View {
 
 struct MediumWidgetView: View {
     @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.focusLanguage) private var lang
     let s: WidgetSnapshot.Resolved
     let date: Date
     let accent: AccentColor
@@ -175,7 +178,7 @@ struct MediumWidgetView: View {
                     .padding(.top, 2)
                 Spacer(minLength: 8)
                 HStack(spacing: 6) {
-                    Button(intent: ToggleTimerIntent()) { WidgetPill(action: PrimaryAction(s), accent: accent) }
+                    Button(intent: ToggleTimerIntent()) { WidgetPill(action: PrimaryAction(s, lang), accent: accent) }
                         .buttonStyle(.plain)
                     if s.isActive {
                         Button(intent: SkipTimerIntent()) { WidgetCircle(symbol: "forward.fill") }
@@ -188,16 +191,16 @@ struct MediumWidgetView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("TODAY")
+                Text(lang.pick("TODAY", "HEUTE"))
                     .font(.system(size: 9, weight: .bold)).tracking(1.2)
                     .foregroundStyle(.white.opacity(0.4))
                 HStack(spacing: 12) {
-                    WidgetStat(title: "Focus", value: formatDuration(s.todayFocus), color: accent.color)
-                    WidgetStat(title: "Break", value: formatDuration(s.todayBreak), color: .white)
+                    WidgetStat(title: lang.pick("Focus", "Fokus"), value: formatDuration(s.todayFocus), color: accent.color)
+                    WidgetStat(title: lang.pick("Break", "Pause"), value: formatDuration(s.todayBreak), color: .white)
                 }
                 Spacer(minLength: 0)
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    Text("SESSIONS · 14 DAYS")
+                    Text(lang.pick("SESSIONS · 14 DAYS", "SESSIONS · 14 TAGE"))
                         .font(.system(size: 8, weight: .bold)).tracking(1)
                         .foregroundStyle(.white.opacity(0.4))
                     Text("\(s.days.suffix(RollingSessionsGrid.dayCount).reduce(0, +))")

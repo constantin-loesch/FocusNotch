@@ -3,15 +3,44 @@ import Foundation
 
 // Code shared by the app and the widget.
 
+/// UI language (switchable in settings; defaults to the Mac's system language).
+enum AppLanguage: String, Codable, CaseIterable, Identifiable {
+    case en, de
+
+    var id: String { rawValue }
+
+    static var system: AppLanguage {
+        (Locale.preferredLanguages.first ?? "en").hasPrefix("de") ? .de : .en
+    }
+
+    /// Name of the language in that language.
+    var name: String { self == .de ? "Deutsch" : "English" }
+
+    /// Picks the English or German text.
+    func pick(_ en: String, _ de: String) -> String { self == .de ? de : en }
+
+    /// Long date, e.g. "Sunday, November 1" / "Sonntag, 1. November".
+    func longDate(_ date: Date) -> String {
+        (self == .de ? Self.deDate : Self.enDate).string(from: date)
+    }
+
+    private static let enDate: DateFormatter = {
+        let f = DateFormatter(); f.locale = Locale(identifier: "en_US"); f.dateFormat = "EEEE, MMMM d"; return f
+    }()
+    private static let deDate: DateFormatter = {
+        let f = DateFormatter(); f.locale = Locale(identifier: "de_DE"); f.dateFormat = "EEEE, d. MMMM"; return f
+    }()
+}
+
 enum Phase: String, Codable {
     case idle, focus, shortBreak, longBreak
 
-    var title: String {
+    func title(_ lang: AppLanguage) -> String {
         switch self {
-        case .idle: return "Ready"
-        case .focus: return "Focus"
-        case .shortBreak: return "Short Break"
-        case .longBreak: return "Long Break"
+        case .idle: return lang.pick("Ready", "Bereit")
+        case .focus: return lang.pick("Focus", "Fokus")
+        case .shortBreak: return lang.pick("Short Break", "Kurze Pause")
+        case .longBreak: return lang.pick("Long Break", "Lange Pause")
         }
     }
 
@@ -70,8 +99,15 @@ func formatDuration(_ seconds: TimeInterval) -> String {
 // MARK: - Preview mode (screenshots)
 
 private struct PreviewModeKey: EnvironmentKey { static let defaultValue = false }
+private struct LanguageKey: EnvironmentKey { static let defaultValue = AppLanguage.system }
 
 extension EnvironmentValues {
+    /// UI language for the widget views.
+    var focusLanguage: AppLanguage {
+        get { self[LanguageKey.self] }
+        set { self[LanguageKey.self] = newValue }
+    }
+
     /// true when rendering outside WidgetKit: replaces links/progress views with static views.
     var focusPreviewMode: Bool {
         get { self[PreviewModeKey.self] }
@@ -92,12 +128,13 @@ struct WidgetSnapshot: Codable {
     var todayBreak: TimeInterval   // break time logged today (without the running phase)
     var days: [Int]                // completed sessions per day, oldest first, last = day of `updated`
     var accent: AccentColor
+    var language: AppLanguage? // optional: older snapshots don't have it
     var updated: Date
 
     static var placeholder: WidgetSnapshot {
         WidgetSnapshot(phase: .idle, endDate: nil, pausedRemaining: nil, duration: 0, focusMinutes: 25,
                        todayFocus: 75 * 60, todayBreak: 15 * 60,
-                       days: (0..<91).map { ($0 * 7 + $0 / 3) % 6 }, accent: .orange, updated: Date())
+                       days: (0..<91).map { ($0 * 7 + $0 / 3) % 6 }, accent: .orange, language: nil, updated: Date())
     }
 
     struct Resolved {

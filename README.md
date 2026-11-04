@@ -75,7 +75,7 @@ Move the mouse onto the notch and the island expands. The header buttons **stay 
 
 ### Settings
 
-Click the gear: focus, short break and long break length, how many sessions until the long break, **accent color**, auto-start breaks, sound, launch at login and reset statistics.
+Click the gear: focus, short break and long break length, how many sessions until the long break, **accent color**, auto-start breaks, sound, launch at login, **language** (English / Deutsch) and reset statistics.
 
 <p align="center">
   <img src="docs/images/island-settings.png" width="720" alt="Settings">
@@ -105,6 +105,7 @@ Two sizes for your desktop. The buttons are **real widget buttons** (App Intents
 - A sound at the end of every phase, then the break starts automatically (can be turned off)
 - Every 4th break is a long break (configurable)
 - A running or paused timer survives an app restart
+- **Bilingual:** English and German, switchable in the settings (starts in your Mac's system language); the widget follows along
 - No Dock icon, no window – just the island
 - Also works on displays without a notch (island centered in the menu bar)
 
@@ -235,8 +236,8 @@ Why like this? When the app asks for it, a visible widget may be redrawn at most
 
 | Location | Content |
 |---|---|
-| `UserDefaults` (`de.constantin.focusnotch`) | `settings`, `sessions` (history of all focus and break phases), `run` (running/paused timer), `cycle` (sessions since the last long break) |
-| `~/Library/Application Support/FocusNotch/widget.json` | Snapshot for the widget: phase, end time, today's times, sessions per day, accent color |
+| `UserDefaults` (`de.constantin.focusnotch`) | `settings` (incl. accent color and language), `sessions` (history of all focus and break phases), `run` (running/paused timer), `cycle` (sessions since the last long break) |
+| `~/Library/Application Support/FocusNotch/widget.json` | Snapshot for the widget: phase, end time, today's times, sessions per day, accent color, language |
 
 The widget runs sandboxed and may read exactly this one folder through an exception entitlement (see `FocusNotchWidget.entitlements`). It draws running countdowns on its own (`Text(timerInterval:)`) without being reloaded.
 
@@ -307,7 +308,7 @@ FocusNotch is built without Xcode – `build.sh` does everything with `swiftc` a
 | `./build.sh` | Build the app and widget (`FocusNotch.app` in the project folder) |
 | `./build.sh install` | Build, install to `/Applications`, launch |
 | `./tools/make_icon.sh` | Re-render the logo → `Resources/AppIcon.icns`, `docs/images/logo.png` |
-| `./tools/screenshots.sh` | Re-render the README images and the social preview → `docs/images/` |
+| `./tools/screenshots.sh` | Re-render the README images and the social preview → `docs/images/` (`FOCUSNOTCH_LANG=de` for German) |
 | `./tools/release.sh` | Build, pack `FocusNotch.zip` and publish it as GitHub release `v<VERSION>` |
 | `install.sh` | Installer for users (downloads the latest release) |
 

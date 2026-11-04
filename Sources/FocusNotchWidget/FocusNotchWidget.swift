@@ -42,6 +42,7 @@ struct FocusWidgetView: View {
             }
         }
         .containerBackground(for: .widget) { Color.black }
+        .environment(\.focusLanguage, entry.snap.language ?? .system)
         .environment(\.colorScheme, .dark)
     }
 }
@@ -52,7 +53,8 @@ struct FocusNotchWidget: Widget {
             FocusWidgetView(entry: entry)
         }
         .configurationDisplayName("FocusNotch")
-        .description("Start and pause your Pomodoro and see today's focus.")
+        .description(AppLanguage.system.pick("Start and pause your Pomodoro and see today's focus.",
+                                             "Pomodoro starten, anhalten und deinen Fokus von heute sehen."))
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }

@@ -139,12 +139,12 @@ struct TimerButtons: View {
         HStack(spacing: 6) {
             CircleButton(symbol: model.isRunning ? "pause.fill" : "play.fill",
                          fill: model.accent, foreground: model.onAccent, size: size,
-                         help: model.isRunning ? "Pause" : (model.isPaused ? "Resume" : "Start")) {
+                         help: model.isRunning ? model.lang.pick("Pause", "Anhalten") : (model.isPaused ? model.lang.pick("Resume", "Fortsetzen") : model.lang.pick("Start", "Starten"))) {
                 model.togglePause()
             }
             if model.isActive {
                 CircleButton(symbol: "forward.fill", fill: .white.opacity(0.16), foreground: .white, size: size,
-                             help: model.phase == .focus ? "Skip to break" : "Skip break") {
+                             help: model.phase == .focus ? model.lang.pick("Skip to break", "Zur Pause springen") : model.lang.pick("Skip break", "Pause überspringen")) {
                     model.skip()
                 }
                 .transition(.scale.combined(with: .opacity))
@@ -213,9 +213,6 @@ struct VDivider: View {
 private enum Fmt {
     static let hm: DateFormatter = { let f = DateFormatter(); f.dateFormat = "HH:mm"; return f }()
     static let sec: DateFormatter = { let f = DateFormatter(); f.dateFormat = "ss"; return f }()
-    static let day: DateFormatter = {
-        let f = DateFormatter(); f.locale = Locale(identifier: "en_US"); f.dateFormat = "EEEE, MMMM d"; return f
-    }()
 }
 
 struct ClockView: View {
@@ -223,7 +220,7 @@ struct ClockView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            SectionLabel("Time")
+            SectionLabel(model.lang.pick("Time", "Uhrzeit"))
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(Fmt.hm.string(from: model.now))
                     .font(.system(size: 44, weight: .bold, design: .rounded).monospacedDigit())
@@ -232,7 +229,7 @@ struct ClockView: View {
                     .font(.system(size: 18, weight: .semibold, design: .rounded).monospacedDigit())
                     .foregroundStyle(.white.opacity(0.45))
             }
-            Text(Fmt.day.string(from: model.now))
+            Text(model.lang.longDate(model.now))
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.white.opacity(0.55))
             TimerControlButtons()
@@ -254,7 +251,7 @@ struct TimerControl: View {
                     .font(.system(size: 22, weight: .bold, design: .rounded).monospacedDigit())
                     .foregroundStyle(.white.opacity(model.isPaused ? 0.5 : 1))
                     .contentTransition(.numericText(countsDown: true))
-                Text(model.phase == .idle ? "\(model.settings.focusMinutes) min focus" : model.phaseLabel)
+                Text(model.phase == .idle ? "\(model.settings.focusMinutes) " + model.lang.pick("min focus", "min Fokus") : model.phaseLabel)
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.white.opacity(0.5))
             }
@@ -270,13 +267,13 @@ struct TimerControlButtons: View {
     var body: some View {
         if model.isActive {
             HStack(spacing: 8) {
-                PillButton(title: model.isPaused ? "Resume" : "Pause",
+                PillButton(title: model.isPaused ? model.lang.pick("Resume", "Weiter") : model.lang.pick("Pause", "Pause"),
                            symbol: model.isPaused ? "play.fill" : "pause.fill") { model.togglePause() }
-                RoundIcon(symbol: "forward.fill", help: "Skip") { model.skip() }
-                RoundIcon(symbol: "stop.fill", help: "Stop") { model.cancel() }
+                RoundIcon(symbol: "forward.fill", help: model.lang.pick("Skip", "Überspringen")) { model.skip() }
+                RoundIcon(symbol: "stop.fill", help: model.lang.pick("Stop", "Stoppen")) { model.cancel() }
             }
         } else {
-            PillButton(title: "Start", symbol: "play.fill") { model.start() }
+            PillButton(title: model.lang.pick("Start", "Start"), symbol: "play.fill") { model.start() }
         }
     }
 }
@@ -289,13 +286,13 @@ struct TodayView: View {
     var body: some View {
         let days = model.dailyCounts(days: RollingSessionsGrid.dayCount)
         VStack(alignment: .leading, spacing: 6) {
-            SectionLabel("Today")
+            SectionLabel(model.lang.pick("Today", "Heute"))
             HStack(spacing: 18) {
-                StatBlock(title: "Focus", value: formatDuration(model.todayFocus), color: model.accent)
-                StatBlock(title: "Break", value: formatDuration(model.todayBreak), color: .white)
+                StatBlock(title: model.lang.pick("Focus", "Fokus"), value: formatDuration(model.todayFocus), color: model.accent)
+                StatBlock(title: model.lang.pick("Break", "Pause"), value: formatDuration(model.todayBreak), color: .white)
             }
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                SectionLabel("Sessions · 14 days")
+                SectionLabel(model.lang.pick("Sessions · 14 days", "Sessions · 14 Tage"))
                 Text("\(days.reduce(0, +))")
                     .font(.system(size: 13, weight: .bold, design: .rounded).monospacedDigit())
                     .foregroundStyle(.white)
@@ -333,20 +330,20 @@ struct SettingsView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 22) {
             VStack(alignment: .leading, spacing: 8) {
-                StepperRow(label: "Focus", value: $model.settings.focusMinutes, unit: "min", range: 1...120, step: 5)
-                StepperRow(label: "Short break", value: $model.settings.shortBreakMinutes, unit: "min", range: 1...30, step: 1)
-                StepperRow(label: "Long break", value: $model.settings.longBreakMinutes, unit: "min", range: 5...60, step: 5)
+                StepperRow(label: model.lang.pick("Focus", "Fokus"), value: $model.settings.focusMinutes, unit: "min", range: 1...120, step: 5)
+                StepperRow(label: model.lang.pick("Short break", "Kurze Pause"), value: $model.settings.shortBreakMinutes, unit: "min", range: 1...30, step: 1)
+                StepperRow(label: model.lang.pick("Long break", "Lange Pause"), value: $model.settings.longBreakMinutes, unit: "min", range: 5...60, step: 5)
             }
             VStack(alignment: .leading, spacing: 8) {
-                StepperRow(label: "Long break after", value: $model.settings.longBreakEvery, unit: "sess.", range: 2...8, step: 1)
+                StepperRow(label: model.lang.pick("Long break after", "Lange Pause nach"), value: $model.settings.longBreakEvery, unit: model.lang.pick("sess.", "Sess."), range: 2...8, step: 1)
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Color").font(.system(size: 10, weight: .medium)).foregroundStyle(.white.opacity(0.55))
+                    Text(model.lang.pick("Color", "Farbe")).font(.system(size: 10, weight: .medium)).foregroundStyle(.white.opacity(0.55))
                     ColorPickerRow(selection: $model.settings.accent)
                 }
                 Button {
                     if confirmReset { model.resetRecord(); confirmReset = false } else { confirmReset = true }
                 } label: {
-                    Text(confirmReset ? "Really delete?" : "Reset statistics")
+                    Text(confirmReset ? model.lang.pick("Really delete?", "Wirklich löschen?") : model.lang.pick("Reset statistics", "Statistik zurücksetzen"))
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(confirmReset ? .black : .white.opacity(0.7))
                         .frame(maxWidth: .infinity, minHeight: 24)
@@ -355,9 +352,9 @@ struct SettingsView: View {
                 .buttonStyle(.plain)
             }
             VStack(alignment: .leading, spacing: 10) {
-                SwitchRow(label: "Auto-start breaks", isOn: $model.settings.autoStartBreak)
-                SwitchRow(label: "Sound", isOn: $model.settings.sound)
-                SwitchRow(label: "Launch at login", isOn: Binding(
+                SwitchRow(label: model.lang.pick("Auto-start breaks", "Pause auto-starten"), isOn: $model.settings.autoStartBreak)
+                SwitchRow(label: model.lang.pick("Sound", "Ton"), isOn: $model.settings.sound)
+                SwitchRow(label: model.lang.pick("Launch at login", "Beim Login starten"), isOn: Binding(
                     get: { launchAtLogin },
                     set: { on in
                         do {
@@ -365,9 +362,39 @@ struct SettingsView: View {
                         } catch { NSLog("Login item: \(error)") }
                         launchAtLogin = SMAppService.mainApp.status == .enabled
                     }))
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(model.lang.pick("Language", "Sprache"))
+                        .font(.system(size: 10, weight: .medium)).foregroundStyle(.white.opacity(0.55))
+                    LanguagePicker(selection: $model.settings.language)
+                }
+                .padding(.top, 2)
             }
         }
         .frame(maxHeight: .infinity, alignment: .center)
+    }
+}
+
+/// English / Deutsch switch.
+struct LanguagePicker: View {
+    @EnvironmentObject var model: PomodoroModel
+    @Binding var selection: AppLanguage
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(AppLanguage.allCases) { lang in
+                let selected = selection == lang
+                Button { selection = lang } label: {
+                    Text(lang.name)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(selected ? model.onAccent : .white.opacity(0.7))
+                        .padding(.horizontal, 12)
+                        .frame(height: 24)
+                        .background(Capsule().fill(selected ? model.accent : Color.white.opacity(0.1)))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 }
 

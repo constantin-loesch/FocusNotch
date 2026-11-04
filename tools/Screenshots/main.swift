@@ -11,6 +11,9 @@ enum Demo {
     /// Sessions of the last 14 days (last value = today)
     static let counts = [4, 6, 3, 0, 5, 8, 7, 2, 6, 4, 0, 5, 7, 3]
 
+    /// Language of the screenshots (FOCUSNOTCH_LANG=de for German)
+    static let language: AppLanguage = ProcessInfo.processInfo.environment["FOCUSNOTCH_LANG"] == "de" ? .de : .en
+
     static func prepare(running: Bool) {
         let d = UserDefaults.standard
         let cal = Calendar.current
@@ -26,7 +29,9 @@ enum Demo {
             }
         }
         d.set(try? JSONEncoder().encode(sessions), forKey: "sessions")
-        d.set(try? JSONEncoder().encode(PomodoroSettings()), forKey: "settings")
+        var settings = PomodoroSettings()
+        settings.language = language
+        d.set(try? JSONEncoder().encode(settings), forKey: "settings")
         d.set(true, forKey: "migratedFromPomodoroIsland")
         d.set(1, forKey: "cycle")
         if running { // Focus has been running for about 10 minutes
@@ -111,6 +116,7 @@ struct WidgetCard<Content: View>: View {
             .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color.black))
             .shadow(color: .black.opacity(0.35), radius: 18, y: 8)
             .environment(\.focusPreviewMode, true)
+            .environment(\.focusLanguage, Demo.language)
     }
 }
 

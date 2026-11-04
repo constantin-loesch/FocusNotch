@@ -10,6 +10,7 @@ struct PomodoroSettings: Codable, Equatable {
     var autoStartBreak = true
     var sound = true
     var accent: AccentColor = .orange
+    var language: AppLanguage = .system
 
     init() {}
 
@@ -24,6 +25,7 @@ struct PomodoroSettings: Codable, Equatable {
         autoStartBreak = (try? c.decodeIfPresent(Bool.self, forKey: .autoStartBreak)) ?? d.autoStartBreak
         sound = (try? c.decodeIfPresent(Bool.self, forKey: .sound)) ?? d.sound
         accent = (try? c.decodeIfPresent(AccentColor.self, forKey: .accent)) ?? d.accent
+        language = (try? c.decodeIfPresent(AppLanguage.self, forKey: .language)) ?? d.language
     }
 }
 
@@ -128,7 +130,8 @@ final class PomodoroModel: ObservableObject {
     }
 
     var remainingString: String { formatClock(remaining) }
-    var phaseLabel: String { isPaused ? "Paused" : phase.title }
+    var lang: AppLanguage { settings.language }
+    var phaseLabel: String { isPaused ? lang.pick("Paused", "Pausiert") : phase.title(lang) }
 
     // MARK: Actions
 
@@ -292,7 +295,8 @@ final class PomodoroModel: ObservableObject {
             phase: phase, endDate: endDate, pausedRemaining: pausedRemaining, duration: phaseDuration,
             focusMinutes: settings.focusMinutes,
             todayFocus: logged(.focus, on: today), todayBreak: logged(.rest, on: today),
-            days: dailyCounts(days: RollingSessionsGrid.dayCount), accent: settings.accent, updated: today))
+            days: dailyCounts(days: RollingSessionsGrid.dayCount), accent: settings.accent,
+            language: settings.language, updated: today))
         WidgetCenter.shared.reloadAllTimelines()
     }
 
