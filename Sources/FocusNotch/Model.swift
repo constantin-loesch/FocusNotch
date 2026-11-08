@@ -91,7 +91,7 @@ final class PomodoroModel: ObservableObject {
     @Published var settings = PomodoroSettings() { didSet { save() } }
 
     /// Called when a phase ends on its own.
-    var onPhaseFinished: (() -> Void)?
+    var onPhaseFinished: ((Phase) -> Void)?
 
     private var cycleCount = 0 // completed Pomodoros since the last long break
     private var ticker: Timer?
@@ -224,6 +224,7 @@ final class PomodoroModel: ObservableObject {
     }
 
     private func finishPhase() {
+        let finished = phase
         if phase == .focus {
             log(.focus, seconds: phaseDuration, completed: true)
             cycleCount += 1
@@ -234,7 +235,7 @@ final class PomodoroModel: ObservableObject {
             playSound("Hero")
             stop()
         }
-        onPhaseFinished?()
+        onPhaseFinished?(finished)
     }
 
     private func playSound(_ name: String) {

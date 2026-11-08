@@ -31,6 +31,10 @@ final class IslandUIState: ObservableObject {
     @Published var showSettings = false
     @Published var notchSize = CGSize(width: 190, height: 32)
     @Published var hasNotch = true
+    /// Completion animation after a focus phase (green check, ~2.5 s).
+    @Published var celebrating = false
+
+    static let celebrationDuration: TimeInterval = 2.5
 
     /// Width left and right of the notch when collapsed.
     static let sideWidth: CGFloat = 136
@@ -40,6 +44,9 @@ final class IslandUIState: ObservableObject {
             // Main view as tall as the round timer; settings need more room
             return CGSize(width: max(660, notchSize.width + 2 * Self.sideWidth + 80),
                           height: notchSize.height + (showSettings ? 196 : 136))
+        }
+        if celebrating {
+            return CGSize(width: notchSize.width + 2 * Self.sideWidth, height: notchSize.height + 76)
         }
         return CGSize(width: notchSize.width + 2 * Self.sideWidth, height: notchSize.height)
     }
@@ -85,8 +92,10 @@ final class IslandController {
             MainActor.assumeIsolated { self?.previousApp = app }
         }
 
-        model.onPhaseFinished = { [weak self] in
-            self?.pinnedUntil = Date().addingTimeInterval(4)
+        // Focus done: show the green check, then close again by itself
+        model.onPhaseFinished = { [weak self] finished in
+            guard finished == .focus else { return }
+            self?.celebrate()
         }
 
         let t = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
@@ -98,6 +107,16 @@ final class IslandController {
 
     /// Last active other app – gets focus back after a widget click.
     private var previousApp: NSRunningApplication?
+
+    private var celebrationEnd: DispatchWorkItem?
+
+    private func celebrate() {
+        celebrationEnd?.cancel()
+        ui.celebrating = true
+        let end = DispatchWorkItem { [weak self] in MainActor.assumeIsolated { self?.ui.celebrating = false } }
+        celebrationEnd = end
+        DispatchQueue.main.asyncAfter(deadline: .now() + IslandUIState.celebrationDuration, execute: end)
+    }
 
     /// Control via URL (from the widget).
     func handle(url: URL) {

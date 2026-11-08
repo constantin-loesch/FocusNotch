@@ -42,7 +42,7 @@ struct IslandView: View {
 
         VStack(spacing: 0) {
             ZStack(alignment: .top) {
-                NotchShape(topRadius: t, bottomRadius: ui.isExpanded ? 26 : 10)
+                NotchShape(topRadius: t, bottomRadius: ui.isExpanded ? 26 : (ui.celebrating ? 22 : 10))
                     .fill(Color.black)
                     .frame(width: size.width, height: size.height)
                     .shadow(color: .black.opacity(ui.isExpanded ? 0.45 : 0), radius: 14, y: 6)
@@ -58,6 +58,10 @@ struct IslandView: View {
                         .padding(.bottom, ui.showSettings ? 18 : 14)
                         .frame(maxHeight: .infinity)
                         .transition(.opacity)
+                    } else if ui.celebrating {
+                        FocusCompleteView()
+                            .frame(maxHeight: .infinity)
+                            .transition(.opacity)
                     }
                 }
                 .padding(.horizontal, t)
@@ -70,6 +74,7 @@ struct IslandView: View {
         .ignoresSafeArea()
         .animation(spring, value: ui.isExpanded)
         .animation(spring, value: ui.showSettings)
+        .animation(spring, value: ui.celebrating)
         .animation(spring, value: model.phase)
         .animation(spring, value: model.isPaused)
         .preferredColorScheme(.dark)
@@ -185,6 +190,71 @@ struct ProgressRing: View {
                 .rotationEffect(.degrees(-90))
                 .animation(.linear(duration: 0.5), value: progress)
         }
+    }
+}
+
+// MARK: - Focus complete
+
+/// Green check that draws itself: circle → check → small bounce.
+struct FocusCompleteView: View {
+    @EnvironmentObject var model: PomodoroModel
+    /// Screenshots: show the finished state right away
+    @Environment(\.focusPreviewMode) private var previewMode
+
+    @State private var ring: CGFloat = 0
+    @State private var check: CGFloat = 0
+    @State private var pop: CGFloat = 0.6
+
+    static let green = Color(red: 0.20, green: 0.84, blue: 0.35)
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle().fill(Self.green.opacity(0.18))
+                Circle()
+                    .trim(from: 0, to: previewMode ? 1 : ring)
+                    .stroke(Self.green, style: StrokeStyle(lineWidth: 3.5, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                CheckmarkShape()
+                    .trim(from: 0, to: previewMode ? 1 : check)
+                    .stroke(Self.green, style: StrokeStyle(lineWidth: 4.5, lineCap: .round, lineJoin: .round))
+                    .padding(13)
+            }
+            .frame(width: 46, height: 46)
+            .scaleEffect(previewMode ? 1 : pop)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(model.lang.pick("Focus complete!", "Fokus geschafft!"))
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                Text(model.phase.isBreak
+                     ? model.lang.pick("Time for a break", "Zeit für eine Pause")
+                     : model.lang.pick("+1 session", "+1 Session"))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+            .opacity(previewMode || check > 0 ? 1 : 0)
+            .offset(x: previewMode || check > 0 ? 0 : -6)
+        }
+        .padding(.bottom, 6)
+        .onAppear {
+            guard !previewMode else { ring = 1; check = 1; pop = 1; return }
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) { pop = 1 }
+            withAnimation(.easeOut(duration: 0.45).delay(0.15)) { ring = 1 }
+            withAnimation(.easeOut(duration: 0.35).delay(0.55)) { check = 1 }
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.45).delay(0.9)) { pop = 1.12 }
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7).delay(1.1)) { pop = 1 }
+        }
+    }
+}
+
+struct CheckmarkShape: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.minX, y: r.midY + r.height * 0.02))
+        p.addLine(to: CGPoint(x: r.minX + r.width * 0.36, y: r.maxY - r.height * 0.12))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.minY + r.height * 0.1))
+        return p
     }
 }
 

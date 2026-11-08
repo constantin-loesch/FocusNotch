@@ -73,6 +73,14 @@ Move the mouse onto the notch and the island expands. The header buttons **stay 
 | **Center** | Round timer with remaining time and phase |
 | **Right** | **Today:** focus time and break time (live) · **Sessions of the last 14 days** as boxes with the count per day – the color intensity adapts automatically to your best day |
 
+### Focus complete
+
+When a focus phase ends, the island drops down for about 2.5 seconds: a green check draws itself, then the island closes again on its own – and the break starts.
+
+<p align="center">
+  <img src="docs/images/island-complete.png" width="720" alt="Focus complete animation">
+</p>
+
 ### Settings
 
 Click the gear: focus, short break and long break length, how many sessions until the long break, **accent color**, auto-start breaks, sound, launch at login, **language** (English / Deutsch) and reset statistics.
@@ -102,7 +110,7 @@ Two sizes for your desktop. The buttons are **real widget buttons** (App Intents
 
 ### Also
 
-- A sound at the end of every phase, then the break starts automatically (can be turned off)
+- A sound at the end of every phase; after a focus phase the break starts automatically (can be turned off)
 - Every 4th break is a long break (configurable)
 - A running or paused timer survives an app restart
 - **Bilingual:** English and German, switchable in the settings (starts in your Mac's system language); the widget follows along
