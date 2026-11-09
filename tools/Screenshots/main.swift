@@ -90,6 +90,7 @@ struct Screen: View {
     var expanded = false
     var settings = false
     var celebrating = false
+    var asking = false
     var menuBar = false
 
     var body: some View {
@@ -98,6 +99,7 @@ struct Screen: View {
         ui.isExpanded = expanded
         ui.showSettings = settings
         ui.celebrating = celebrating
+        ui.askNextSession = asking
         return ZStack(alignment: .top) {
             Wallpaper()
             if menuBar { MenuBar() }
@@ -181,6 +183,7 @@ MainActor.assumeIsolated {
     save("island-running", width: 760, height: 64) { Screen(model: running) }
     save("island-expanded", width: 760, height: 210) { Screen(model: running, expanded: true) }
     save("island-complete", width: 760, height: 140) { Screen(model: idle, celebrating: true) }
+    save("island-next-session", width: 760, height: 150) { Screen(model: idle, asking: true) }
     save("island-settings", width: 760, height: 270) { Screen(model: idle, expanded: true, settings: true) }
     save("widgets", width: 640, height: 230) {
         ZStack { Wallpaper(); Widgets(idle: idleSnap, running: runningSnap) }

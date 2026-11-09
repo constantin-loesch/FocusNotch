@@ -42,7 +42,7 @@ struct IslandView: View {
 
         VStack(spacing: 0) {
             ZStack(alignment: .top) {
-                NotchShape(topRadius: t, bottomRadius: ui.isExpanded ? 26 : (ui.celebrating ? 22 : 10))
+                NotchShape(topRadius: t, bottomRadius: ui.isExpanded ? 26 : (ui.celebrating || ui.askNextSession ? 22 : 10))
                     .fill(Color.black)
                     .frame(width: size.width, height: size.height)
                     .shadow(color: .black.opacity(ui.isExpanded ? 0.45 : 0), radius: 14, y: 6)
@@ -58,6 +58,10 @@ struct IslandView: View {
                         .padding(.bottom, ui.showSettings ? 18 : 14)
                         .frame(maxHeight: .infinity)
                         .transition(.opacity)
+                    } else if ui.askNextSession {
+                        NextSessionPrompt()
+                            .frame(maxHeight: .infinity)
+                            .transition(.opacity)
                     } else if ui.celebrating {
                         FocusCompleteView()
                             .frame(maxHeight: .infinity)
@@ -75,6 +79,7 @@ struct IslandView: View {
         .animation(spring, value: ui.isExpanded)
         .animation(spring, value: ui.showSettings)
         .animation(spring, value: ui.celebrating)
+        .animation(spring, value: ui.askNextSession)
         .animation(spring, value: model.phase)
         .animation(spring, value: model.isPaused)
         .preferredColorScheme(.dark)
@@ -245,6 +250,88 @@ struct FocusCompleteView: View {
             withAnimation(.spring(response: 0.25, dampingFraction: 0.45).delay(0.9)) { pop = 1.12 }
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7).delay(1.1)) { pop = 1 }
         }
+    }
+}
+
+// MARK: - Break over: next session?
+
+/// Two big round buttons (red X = no, green check = yes); either one closes the island.
+struct NextSessionPrompt: View {
+    @EnvironmentObject var model: PomodoroModel
+    @EnvironmentObject var ui: IslandUIState
+    @Environment(\.focusPreviewMode) private var previewMode
+    @State private var shown = false
+
+    static let red = Color(red: 1.0, green: 0.30, blue: 0.27)
+
+    var body: some View {
+        let visible = previewMode || shown
+        HStack(spacing: 14) {
+            AnswerButton(color: Self.red, help: model.lang.pick("No", "Nein")) {
+                CrossShape().stroke(Self.red, style: StrokeStyle(lineWidth: 4.5, lineCap: .round)).padding(15)
+            } action: {
+                ui.askNextSession = false
+            }
+            AnswerButton(color: FocusCompleteView.green, help: model.lang.pick("Yes", "Ja")) {
+                CheckmarkShape()
+                    .stroke(FocusCompleteView.green, style: StrokeStyle(lineWidth: 4.5, lineCap: .round, lineJoin: .round))
+                    .padding(13)
+            } action: {
+                ui.askNextSession = false
+                model.start()
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(model.lang.pick("Break over", "Pause vorbei"))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.6))
+                Text(model.lang.pick("Start a new session?", "Neue Session starten?"))
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+            }
+            .padding(.leading, 4)
+        }
+        .scaleEffect(visible ? 1 : 0.85)
+        .opacity(visible ? 1 : 0)
+        .padding(.bottom, 6)
+        .onAppear {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.65).delay(0.1)) { shown = true }
+        }
+    }
+}
+
+/// Big round answer button with hover feedback.
+struct AnswerButton<Icon: View>: View {
+    let color: Color
+    let help: String
+    @ViewBuilder let icon: Icon
+    let action: () -> Void
+    @State private var hover = false
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle().fill(color.opacity(hover ? 0.32 : 0.18))
+                Circle().stroke(color, lineWidth: 3.5)
+                icon
+            }
+            .frame(width: 46, height: 46)
+            .scaleEffect(hover ? 1.08 : 1)
+            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: hover)
+            .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hover = $0 }
+        .help(help)
+    }
+}
+
+struct CrossShape: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.minX, y: r.minY)); p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+        p.move(to: CGPoint(x: r.maxX, y: r.minY)); p.addLine(to: CGPoint(x: r.minX, y: r.maxY))
+        return p
     }
 }
 

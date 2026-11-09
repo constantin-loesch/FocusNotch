@@ -33,6 +33,8 @@ final class IslandUIState: ObservableObject {
     @Published var hasNotch = true
     /// Completion animation after a focus phase (green check, ~2.5 s).
     @Published var celebrating = false
+    /// After a break ends: "Start a new session?" with yes/no (stays until answered).
+    @Published var askNextSession = false
 
     static let celebrationDuration: TimeInterval = 2.5
 
@@ -44,6 +46,9 @@ final class IslandUIState: ObservableObject {
             // Main view as tall as the round timer; settings need more room
             return CGSize(width: max(660, notchSize.width + 2 * Self.sideWidth + 80),
                           height: notchSize.height + (showSettings ? 196 : 136))
+        }
+        if askNextSession {
+            return CGSize(width: notchSize.width + 2 * Self.sideWidth, height: notchSize.height + 82)
         }
         if celebrating {
             return CGSize(width: notchSize.width + 2 * Self.sideWidth, height: notchSize.height + 76)
@@ -93,9 +98,21 @@ final class IslandController {
         }
 
         // Focus done: show the green check, then close again by itself
+        // Focus done → green check. Break done → ask whether to start the next session.
         model.onPhaseFinished = { [weak self] finished in
-            guard finished == .focus else { return }
-            self?.celebrate()
+            guard let self else { return }
+            if finished == .focus {
+                self.celebrate()
+            } else if finished.isBreak {
+                self.celebrationEnd?.cancel()
+                self.ui.celebrating = false
+                self.ui.askNextSession = true
+            }
+        }
+
+        // Started some other way (header, widget, …) → the question is answered
+        phaseObserver = model.$phase.sink { [weak self] phase in
+            if phase != .idle { self?.ui.askNextSession = false }
         }
 
         let t = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
@@ -109,6 +126,7 @@ final class IslandController {
     private var previousApp: NSRunningApplication?
 
     private var celebrationEnd: DispatchWorkItem?
+    private var phaseObserver: AnyCancellable?
 
     private func celebrate() {
         celebrationEnd?.cancel()
@@ -122,6 +140,7 @@ final class IslandController {
     func handle(url: URL) {
         guard url.scheme == "focusnotch", let command = url.host else { return }
         if command == "settings" {
+            ui.askNextSession = false
             ui.showSettings = true
             ui.isExpanded = true
             pinnedUntil = Date().addingTimeInterval(8) // keep open until the mouse arrives
@@ -179,6 +198,13 @@ final class IslandController {
             lastInside = now
         } else {
             enteredAt = nil
+        }
+
+        // While asking for the next session: don't expand on hover, just make the buttons clickable
+        if ui.askNextSession {
+            if ui.isExpanded { ui.isExpanded = false; ui.showSettings = false }
+            panel.ignoresMouseEvents = !inside
+            return
         }
 
         let dwellDone = enteredAt.map { now.timeIntervalSince($0) > 0.08 } ?? false

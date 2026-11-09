@@ -81,6 +81,14 @@ When a focus phase ends, the island drops down for about 2.5 seconds: a green ch
   <img src="docs/images/island-complete.png" width="720" alt="Focus complete animation">
 </p>
 
+### Break over – next session?
+
+When a break ends, the island asks whether to start the next session. Two big buttons: **✗** dismisses the question, **✓** starts the next focus phase right away. Either way the island closes again. The question stays until you answer it (or start a timer some other way).
+
+<p align="center">
+  <img src="docs/images/island-next-session.png" width="720" alt="Start a new session prompt">
+</p>
+
 ### Settings
 
 Click the gear: focus, short break and long break length, how many sessions until the long break, **accent color**, auto-start breaks, sound, launch at login, **language** (English / Deutsch) and reset statistics.
@@ -110,7 +118,7 @@ Two sizes for your desktop. The buttons are **real widget buttons** (App Intents
 
 ### Also
 
-- A sound at the end of every phase; after a focus phase the break starts automatically (can be turned off)
+- A sound at the end of every phase; after a focus phase the break starts automatically (can be turned off), after a break you choose whether to continue
 - Every 4th break is a long break (configurable)
 - A running or paused timer survives an app restart
 - **Bilingual:** English and German, switchable in the settings (starts in your Mac's system language); the widget follows along
