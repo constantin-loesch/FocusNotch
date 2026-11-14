@@ -48,7 +48,7 @@ curl -fsSL https://raw.githubusercontent.com/constantin-loesch/FocusNotch/main/i
 
 ### Always there – right next to the camera
 
-To the left of the notch you always see the **start button** and the **time** – the configured focus length when idle, the countdown while running. To the right, a **progress bar** shows how far along the current phase is.
+To the left of the notch you always see the **start button** and the **time** – the configured focus length when idle, the countdown while running. To the right, a **progress bar** shows how far along the current phase is (can be turned off in the settings).
 
 <p align="center">
   <img src="docs/images/island-idle.png" width="720" alt="Island when idle"><br>
@@ -91,7 +91,7 @@ When a break ends, the island asks whether to start the next session. Two big bu
 
 ### Settings
 
-Click the gear: focus, short break and long break length, how many sessions until the long break, **accent color**, auto-start breaks, sound, launch at login, **language** (English / Deutsch) and reset statistics.
+Click the gear: focus, short break and long break length, how many sessions until the long break, **accent color**, auto-start breaks, sound, **progress bar** next to the camera (on/off), launch at login, **language** (English / Deutsch) and reset statistics.
 
 <p align="center">
   <img src="docs/images/island-settings.png" width="720" alt="Settings">
@@ -119,7 +119,7 @@ Two sizes for your desktop. The buttons are **real widget buttons** (App Intents
 ### Also
 
 - A sound at the end of every phase; after a focus phase the break starts automatically (can be turned off), after a break you choose whether to continue
-- Every 4th break is a long break (configurable)
+- Every 4th break is a long break (configurable); after an hour without a new session the cycle starts over
 - A running or paused timer survives an app restart
 - **Bilingual:** English and German, switchable in the settings (starts in your Mac's system language); the widget follows along
 - No Dock icon, no window – just the island
@@ -252,7 +252,7 @@ Why like this? When the app asks for it, a visible widget may be redrawn at most
 
 | Location | Content |
 |---|---|
-| `UserDefaults` (`de.constantin.focusnotch`) | `settings` (incl. accent color and language), `sessions` (history of all focus and break phases), `run` (running/paused timer), `cycle` (sessions since the last long break) |
+| `UserDefaults` (`de.constantin.focusnotch`) | `settings` (incl. accent color and language), `sessions` (history of all focus and break phases), `run` (running/paused timer), `cycle` (sessions since the last long break), `idleSince` (when the timer last went idle – resets the cycle after an hour) |
 | `~/Library/Application Support/FocusNotch/widget.json` | Snapshot for the widget: phase, end time, today's times, sessions per day, accent color, language |
 
 The widget runs sandboxed and may read exactly this one folder through an exception entitlement (see `FocusNotchWidget.entitlements`). It draws running countdowns on its own (`Text(timerInterval:)`) without being reloaded.

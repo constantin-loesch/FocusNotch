@@ -11,7 +11,7 @@ TAG="v$VERSION"
 
 ./build.sh
 rm -f build/FocusNotch.zip
-ditto -c -k --keepParent FocusNotch.app build/FocusNotch.zip
+ditto -c -k --norsrc --noextattr --keepParent FocusNotch.app build/FocusNotch.zip
 echo "Archive: build/FocusNotch.zip ($(du -h build/FocusNotch.zip | cut -f1))"
 [ "${1:-}" = "--zip-only" ] && exit 0
 

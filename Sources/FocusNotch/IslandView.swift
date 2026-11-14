@@ -80,6 +80,7 @@ struct IslandView: View {
         .animation(spring, value: ui.showSettings)
         .animation(spring, value: ui.celebrating)
         .animation(spring, value: ui.askNextSession)
+        .animation(spring, value: model.settings.showProgressBar)
         .animation(spring, value: model.phase)
         .animation(spring, value: model.isPaused)
         .preferredColorScheme(.dark)
@@ -124,8 +125,11 @@ struct HeaderRow: View {
             Color.clear.frame(width: ui.notchSize.width)
 
             HStack(spacing: 14) {
-                ProgressBar(progress: model.progress, color: model.accent)
-                    .frame(width: 72, height: 5)
+                if model.settings.showProgressBar {
+                    ProgressBar(progress: model.progress, color: model.accent)
+                        .frame(width: 72, height: 5)
+                        .transition(.opacity)
+                }
                 Spacer(minLength: 0)
                 if ui.isExpanded {
                     IconButton(symbol: ui.showSettings ? "xmark" : "gearshape.fill") { ui.showSettings.toggle() }
@@ -511,6 +515,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 SwitchRow(label: model.lang.pick("Auto-start breaks", "Pause auto-starten"), isOn: $model.settings.autoStartBreak)
                 SwitchRow(label: model.lang.pick("Sound", "Ton"), isOn: $model.settings.sound)
+                SwitchRow(label: model.lang.pick("Progress bar", "Fortschrittsleiste"), isOn: $model.settings.showProgressBar)
                 SwitchRow(label: model.lang.pick("Launch at login", "Beim Login starten"), isOn: Binding(
                     get: { launchAtLogin },
                     set: { on in

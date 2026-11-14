@@ -45,7 +45,7 @@ final class IslandUIState: ObservableObject {
         if isExpanded {
             // Main view as tall as the round timer; settings need more room
             return CGSize(width: max(660, notchSize.width + 2 * Self.sideWidth + 80),
-                          height: notchSize.height + (showSettings ? 196 : 136))
+                          height: notchSize.height + (showSettings ? 212 : 136))
         }
         if askNextSession {
             return CGSize(width: notchSize.width + 2 * Self.sideWidth, height: notchSize.height + 82)

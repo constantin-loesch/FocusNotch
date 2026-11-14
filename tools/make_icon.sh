@@ -4,9 +4,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 source tools/common.sh
 pick_sdk
+stage_sources
 
 swiftc -swift-version 5 -sdk "$SDK" -target $TARGET -module-name Icon -o build/make-icon \
-  tools/Icon/*.swift Sources/Shared/*.swift $(app_sources_without_main)
+  "$SRC"/tools/Icon/*.swift "$SRC"/Sources/Shared/*.swift $(app_sources_without_main)
 build/make-icon build/logo-1024.png
 
 ICONSET=build/AppIcon.iconset

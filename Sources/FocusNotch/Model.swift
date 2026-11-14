@@ -11,6 +11,7 @@ struct PomodoroSettings: Codable, Equatable {
     var sound = true
     var accent: AccentColor = .orange
     var language: AppLanguage = .system
+    var showProgressBar = true
 
     init() {}
 
@@ -26,6 +27,7 @@ struct PomodoroSettings: Codable, Equatable {
         sound = (try? c.decodeIfPresent(Bool.self, forKey: .sound)) ?? d.sound
         accent = (try? c.decodeIfPresent(AccentColor.self, forKey: .accent)) ?? d.accent
         language = (try? c.decodeIfPresent(AppLanguage.self, forKey: .language)) ?? d.language
+        showProgressBar = (try? c.decodeIfPresent(Bool.self, forKey: .showProgressBar)) ?? d.showProgressBar
     }
 }
 
@@ -94,6 +96,9 @@ final class PomodoroModel: ObservableObject {
     var onPhaseFinished: ((Phase) -> Void)?
 
     private var cycleCount = 0 // completed Pomodoros since the last long break
+    /// When the timer last went idle – after `cycleResetAfter` without a new session the cycle starts over.
+    private var idleSince: Date?
+    static let cycleResetAfter: TimeInterval = 60 * 60
     private var ticker: Timer?
     private let defaults = UserDefaults.standard
     private var isLoading = false
@@ -137,7 +142,19 @@ final class PomodoroModel: ObservableObject {
 
     /// Starts a focus timer or resumes a paused one.
     func start() {
-        if !isActive { begin(.focus, minutes: settings.focusMinutes) } else if isPaused { resume() }
+        if !isActive {
+            resetCycleIfIdleTooLong()
+            begin(.focus, minutes: settings.focusMinutes)
+        } else if isPaused {
+            resume()
+        }
+    }
+
+    /// No new session for an hour → the Pomodoro cycle starts from the beginning.
+    private func resetCycleIfIdleTooLong(now: Date = Date()) {
+        if let idleSince, now.timeIntervalSince(idleSince) >= Self.cycleResetAfter {
+            cycleCount = 0
+        }
     }
 
     func togglePause() {
@@ -209,6 +226,7 @@ final class PomodoroModel: ObservableObject {
         endDate = nil
         pausedRemaining = nil
         phaseDuration = 0
+        idleSince = Date()
         save()
     }
 
@@ -283,6 +301,7 @@ final class PomodoroModel: ObservableObject {
         defaults.set(try? enc.encode(sessions), forKey: "sessions")
         defaults.set(cancelledCount, forKey: "cancelled")
         defaults.set(cycleCount, forKey: "cycle")
+        defaults.set(idleSince?.timeIntervalSince1970, forKey: "idleSince")
         if isActive {
             let rs = RunState(phase: phase, endDate: endDate, pausedRemaining: pausedRemaining,
                               duration: phaseDuration, cycleCount: cycleCount)
@@ -321,6 +340,7 @@ final class PomodoroModel: ObservableObject {
         if let d = defaults.data(forKey: "sessions"), let s = try? dec.decode([Session].self, from: d) { sessions = s }
         cancelledCount = defaults.integer(forKey: "cancelled")
         cycleCount = defaults.integer(forKey: "cycle")
+        if let t = defaults.object(forKey: "idleSince") as? Double { idleSince = Date(timeIntervalSince1970: t) }
         // Resume a running or paused timer after a restart
         if let d = defaults.data(forKey: "run"), let rs = try? dec.decode(RunState.self, from: d) {
             if let p = rs.pausedRemaining {

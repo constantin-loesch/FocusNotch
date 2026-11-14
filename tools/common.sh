@@ -16,7 +16,16 @@ pick_sdk() {
   [ -n "$SDK" ] || { echo "No matching macOS SDK found"; exit 1; }
 }
 
+# Copies the sources to a temporary folder outside the project (result in $SRC).
+# Synced folders (e.g. an iCloud Desktop) touch files while swiftc runs, which aborts the build.
+stage_sources() {
+  SRC=$(mktemp -d)/src
+  mkdir -p "$SRC"
+  cp -R Sources tools "$SRC/"
+  trap 'rm -rf "$(dirname "$SRC")"' EXIT
+}
+
 # App sources without main.swift (for tools with their own entry point)
 app_sources_without_main() {
-  ls Sources/FocusNotch/*.swift | grep -v '/main.swift$'
+  ls "$SRC"/Sources/FocusNotch/*.swift | grep -v '/main.swift$'
 }
