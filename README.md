@@ -48,7 +48,7 @@ curl -fsSL https://raw.githubusercontent.com/constantin-loesch/FocusNotch/main/i
 
 ### Always there – right next to the camera
 
-To the left of the notch you always see the **start button** and the **time** – the configured focus length when idle, the countdown while running. To the right, a **progress bar** shows how far along the current phase is (can be turned off in the settings).
+To the left of the notch you always see the **start button** and the **time** – the configured focus length when idle, the countdown while running. To the right, a **progress bar** shows how far along the current phase is (can be turned off in the settings – the island then only extends to the left).
 
 <p align="center">
   <img src="docs/images/island-idle.png" width="720" alt="Island when idle"><br>
@@ -57,6 +57,10 @@ To the left of the notch you always see the **start button** and the **time** �
 <p align="center">
   <img src="docs/images/island-running.png" width="720" alt="Island with a running timer"><br>
   <sub>Running – pause and skip right next to the time</sub>
+</p>
+<p align="center">
+  <img src="docs/images/island-running-compact.png" width="720" alt="Island without progress bar"><br>
+  <sub>Progress bar turned off – the island ends right at the camera</sub>
 </p>
 
 ### Hover to expand

@@ -100,6 +100,7 @@ struct Screen: View {
         ui.showSettings = settings
         ui.celebrating = celebrating
         ui.askNextSession = asking
+        ui.compactRight = !model.settings.showProgressBar
         return ZStack(alignment: .top) {
             Wallpaper()
             if menuBar { MenuBar() }
@@ -182,6 +183,12 @@ MainActor.assumeIsolated {
     save("island-idle", width: 760, height: 64) { Screen(model: idle) }
     save("island-running", width: 760, height: 64) { Screen(model: running) }
     save("island-expanded", width: 760, height: 210) { Screen(model: running, expanded: true) }
+    // Progress bar turned off: no space reserved to the right of the camera
+    Demo.prepare(running: true)
+    let compact = PomodoroModel()
+    compact.settings.showProgressBar = false
+    save("island-running-compact", width: 760, height: 64) { Screen(model: compact) }
+
     save("island-complete", width: 760, height: 140) { Screen(model: idle, celebrating: true) }
     save("island-next-session", width: 760, height: 150) { Screen(model: idle, asking: true) }
     save("island-settings", width: 760, height: 270) { Screen(model: idle, expanded: true, settings: true) }

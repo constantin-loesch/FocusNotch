@@ -48,7 +48,7 @@ struct IslandView: View {
                     .shadow(color: .black.opacity(ui.isExpanded ? 0.45 : 0), radius: 14, y: 6)
 
                 VStack(spacing: 0) {
-                    HeaderRow(sideWidth: max(0, (size.width - 2 * t - ui.notchSize.width) / 2))
+                    HeaderRow(leftWidth: max(0, ui.sides.left - t), rightWidth: max(0, ui.sides.right - t))
                     if ui.isExpanded {
                         Group {
                             if ui.showSettings { SettingsView() } else { MainPanel() }
@@ -72,6 +72,7 @@ struct IslandView: View {
                 .frame(width: size.width, height: size.height, alignment: .top)
                 .clipped()
             }
+            .offset(x: ui.offsetX)
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -81,6 +82,7 @@ struct IslandView: View {
         .animation(spring, value: ui.celebrating)
         .animation(spring, value: ui.askNextSession)
         .animation(spring, value: model.settings.showProgressBar)
+        .animation(spring, value: ui.compactRight)
         .animation(spring, value: model.phase)
         .animation(spring, value: model.isPaused)
         .preferredColorScheme(.dark)
@@ -95,7 +97,8 @@ struct IslandView: View {
 struct HeaderRow: View {
     @EnvironmentObject var model: PomodoroModel
     @EnvironmentObject var ui: IslandUIState
-    var sideWidth: CGFloat
+    var leftWidth: CGFloat
+    var rightWidth: CGFloat
 
     var body: some View {
         HStack(spacing: 0) {
@@ -120,7 +123,7 @@ struct HeaderRow: View {
             }
             .padding(.leading, 14)
             .padding(.trailing, 10)
-            .frame(width: sideWidth)
+            .frame(width: leftWidth)
 
             Color.clear.frame(width: ui.notchSize.width)
 
@@ -138,7 +141,8 @@ struct HeaderRow: View {
             }
             .padding(.leading, 10)
             .padding(.trailing, 16)
-            .frame(width: sideWidth)
+            .frame(width: rightWidth)
+            .clipped()
         }
         .frame(height: ui.notchSize.height)
     }

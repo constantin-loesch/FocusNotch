@@ -35,11 +35,28 @@ final class IslandUIState: ObservableObject {
     @Published var celebrating = false
     /// After a break ends: "Start a new session?" with yes/no (stays until answered).
     @Published var askNextSession = false
+    /// Progress bar turned off → no space reserved to the right of the camera when collapsed.
+    @Published var compactRight = false
 
     static let celebrationDuration: TimeInterval = 2.5
 
     /// Width left and right of the notch when collapsed.
     static let sideWidth: CGFloat = 136
+    /// Right side without progress bar: just enough for the rounded edge next to the notch.
+    static let compactSideWidth: CGFloat = 10
+
+    /// Only the plain collapsed island can be asymmetric; everything else is centered on the notch.
+    private var isCompact: Bool { compactRight && !isExpanded && !askNextSession && !celebrating }
+
+    /// Width of the island to the left and right of the notch.
+    var sides: (left: CGFloat, right: CGFloat) {
+        let w = size().width - notchSize.width
+        if isCompact { return (Self.sideWidth, Self.compactSideWidth) }
+        return (w / 2, w / 2)
+    }
+
+    /// Horizontal shift of the island so the notch stays in place when the sides differ.
+    var offsetX: CGFloat { (sides.right - sides.left) / 2 }
 
     func size() -> CGSize {
         if isExpanded {
@@ -52,6 +69,9 @@ final class IslandUIState: ObservableObject {
         }
         if celebrating {
             return CGSize(width: notchSize.width + 2 * Self.sideWidth, height: notchSize.height + 76)
+        }
+        if compactRight {
+            return CGSize(width: notchSize.width + Self.sideWidth + Self.compactSideWidth, height: notchSize.height)
         }
         return CGSize(width: notchSize.width + 2 * Self.sideWidth, height: notchSize.height)
     }
@@ -115,6 +135,11 @@ final class IslandController {
             if phase != .idle { self?.ui.askNextSession = false }
         }
 
+        // Progress bar off → free the space to the right of the camera
+        progressBarObserver = model.$settings.map(\.showProgressBar).removeDuplicates().sink { [weak self] shown in
+            self?.ui.compactRight = !shown
+        }
+
         let t = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.trackMouse() }
         }
@@ -127,6 +152,7 @@ final class IslandController {
 
     private var celebrationEnd: DispatchWorkItem?
     private var phaseObserver: AnyCancellable?
+    private var progressBarObserver: AnyCancellable?
 
     private func celebrate() {
         celebrationEnd?.cancel()
@@ -188,7 +214,7 @@ final class IslandController {
         let f = panel.frame
         let size = ui.size()
         let pad: CGFloat = ui.isExpanded ? 14 : 2
-        let hot = NSRect(x: f.midX - size.width / 2 - pad, y: f.maxY - size.height - pad,
+        let hot = NSRect(x: f.midX + ui.offsetX - size.width / 2 - pad, y: f.maxY - size.height - pad,
                          width: size.width + 2 * pad, height: size.height + pad + 4)
         let inside = hot.contains(p)
         let now = Date()
